@@ -1,0 +1,58 @@
+// src/components/PromptForm.jsx
+import { useState } from 'react';
+import axios from 'axios';
+
+export default function PromptForm() {
+  const [product, setProduct] = useState('');
+  const [style, setStyle] = useState('친근한');
+  const [response, setResponse] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post('http://localhost:8080/api/generate', {
+        product,
+        style,
+      });
+      setResponse(res.data.output);
+    } catch (err) {
+      console.error('API 호출 오류:', err);
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-xl mx-auto">
+      <h1 className="text-xl font-bold mb-4">광고 문구 생성기</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          className="w-full border p-2"
+          type="text"
+          placeholder="상품명을 입력하세요"
+          value={product}
+          onChange={(e) => setProduct(e.target.value)}
+        />
+        <select
+          className="w-full border p-2"
+          value={style}
+          onChange={(e) => setStyle(e.target.value)}
+        >
+          <option value="친근한">친근한</option>
+          <option value="전문가적">전문가적</option>
+          <option value="유쾌한">유쾌한</option>
+          <option value="고급스러운">고급스러운</option>
+          <option value="절제된">절제된</option>
+        </select>
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+          문구 생성하기
+        </button>
+      </form>
+
+      {response && (
+        <div className="mt-6 bg-gray-100 p-4 rounded border">
+          <h2 className="font-semibold mb-2">GPT 응답:</h2>
+          <pre>{response}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
