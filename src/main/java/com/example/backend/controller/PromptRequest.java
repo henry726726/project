@@ -1,4 +1,5 @@
-// src/main/java/com/example/controller/PromptRequest.java
+package com.example.backend.controller;
+
 public class PromptRequest {
     private String product;
     private String style;
