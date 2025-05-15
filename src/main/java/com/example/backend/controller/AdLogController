@@ -1,0 +1,21 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.AdLog;
+import com.example.backend.repository.AdLogRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequiredArgsConstructor
+public class AdLogController {
+
+    private final AdLogRepository adLogRepository;
+
+    @GetMapping("/save-log")
+    public String saveLog() {
+        AdLog log = new AdLog(null, "user123", "광고1 클릭", "2025-05-15 20:00:00");
+        adLogRepository.save(log);
+        return "✅ 저장 완료!";
+    }
+}
