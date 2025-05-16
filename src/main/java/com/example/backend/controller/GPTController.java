@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,10 @@ public Map<String, String> generate(@RequestBody PromptRequest request) throws I
         .build();
 
     try (Response response = client.newCall(req).execute()) {
+        if (!response.isSuccessful()) {
+        System.err.println("❌ GPT API 요청 실패: " + response.code() + " - " + response.message());
+        }
+
         String result = response.body().string();
         return Map.of("output", result);
     }
