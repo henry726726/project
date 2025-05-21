@@ -36,3 +36,14 @@ CORS 허용	        백엔드 컨트롤러에 @CrossOrigin(origins = "*") 추가
 API 키	            .env 또는 application.properties에서 관리 (OPENAI_API_KEY)
 포트 충돌 주의	    백엔드 8080, 프론트 3000에서 실행되도록 유지
 
+# application.properties 수정 필요
+api키, db연결 코드 작성
+
+# db 연결 후 user_data_input에 id 하나 생성 필수
+id 생성 후 그 id에 맞게 PromptForm.jsx의
+// 🔹 2. DB 저장 요청
+    await axios.post('http://localhost:8080/userdatainput/content', {
+      userdatainputId: 'test-001', // 추후에 로그인 아이디 받아올 예정정
+      caption: text,
+      imageUrl: imageUrl,
+    }); 이 부분 id 수정하면 돌아감
