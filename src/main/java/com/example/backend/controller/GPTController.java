@@ -1,20 +1,14 @@
 package com.example.backend.controller;
 
-
+import com.example.backend.dto.PromptRequest;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.*;
-
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-
-import com.example.backend.dto.PromptRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api")
@@ -24,48 +18,43 @@ public class GPTController {
     @Value("${openai.api.key}")
     private String apiKey;
 
+    private final OkHttpClient client = new OkHttpClient();
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final MediaType mediaType = MediaType.parse("application/json");
+
     @PostMapping("/generate")
-public Map<String, String> generate(@RequestBody PromptRequest request) throws IOException {
-    String prompt = String.format(
-        "다음 제품 정보를 바탕으로 [%s] 톤의 광고 문구 2개를 작성해줘. 30자 이내로 CTA 포함.\n" +
-        "제품: %s\n응답 형식: [\"문구1\", \"문구2\"]",
-        request.getStyle(),
-        request.getProduct()
-    );
+    public Map<String, Object> generate(@RequestBody PromptRequest request) throws IOException {
+        String prompt = String.format(
+                "다음 제품 정보를 바탕으로 [%s] 톤의 광고 문구 2개를 작성해줘. 30자 이내로 CTA 포함.\n" +
+                        "제품: %s\n응답 형식: [\"문구1\", \"문구2\"]",
+                request.getStyle(),
+                request.getProduct());
 
-    OkHttpClient client = new OkHttpClient();
-    MediaType mediaType = MediaType.parse("application/json");
+        System.out.println("GPT 프롬프트:\n" + prompt);
 
-    ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> message = Map.of("role", "user", "content", prompt);
+        Map<String, Object> body = Map.of("model", "gpt-4", "messages", List.of(message));
+        String json = mapper.writeValueAsString(body);
 
-    Map<String, Object> message = Map.of(
-        "role", "user",
-        "content", prompt
-    );
-    Map<String, Object> bodyMap = Map.of(
-        "model", "gpt-4",
-        "messages", List.of(message)
-    );
+        okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(json, mediaType);
+        Request gptRequest = new Request.Builder()
+                .url("https://api.openai.com/v1/chat/completions")
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .build();
 
-    String json = mapper.writeValueAsString(bodyMap);
+        try (Response response = client.newCall(gptRequest).execute()) {
+            String responseBody = response.body().string();
+            JsonNode root = mapper.readTree(responseBody);
+            String content = root.get("choices").get(0).get("message").get("content").asText();
 
-    okhttp3.RequestBody body = okhttp3.RequestBody.create(json, mediaType);
+            List<String> adTexts = mapper.readValue(content, List.class);
 
-    Request req = new Request.Builder()
-        .url("https://api.openai.com/v1/chat/completions")
-        .post(body)
-        .addHeader("Authorization", "Bearer " + apiKey)
-        .addHeader("Content-Type", "application/json")
-        .build();
+            System.out.println("✅ GPT 응답 문구들:");
+            adTexts.forEach(System.out::println);
 
-    try (Response response = client.newCall(req).execute()) {
-        if (!response.isSuccessful()) {
-        System.err.println("❌ GPT API 요청 실패: " + response.code() + " - " + response.message());
+            return Map.of("adTexts", adTexts);
         }
-
-        String result = response.body().string();
-        return Map.of("output", result);
     }
-}
-
 }
