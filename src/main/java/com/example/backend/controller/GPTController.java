@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestBody;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +38,7 @@ public class GPTController {
         Map<String, Object> body = Map.of("model", "gpt-4", "messages", List.of(message));
         String json = mapper.writeValueAsString(body);
 
-        okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(json, mediaType);
+        okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(json, mediaType); // ← 순서 바뀜
         Request gptRequest = new Request.Builder()
                 .url("https://api.openai.com/v1/chat/completions")
                 .post(requestBody)

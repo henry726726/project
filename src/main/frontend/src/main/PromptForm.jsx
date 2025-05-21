@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { useState } from 'react';
 import axios from 'axios';
 
@@ -33,24 +33,37 @@ export default function PromptForm() {
   };
 
   const handleImageGenerate = async (text) => {
-    setSelectedText(text);
-    setLoading(true);
-    setImageUrl('');
+  setSelectedText(text);
+  setLoading(true);
+  setImageUrl('');
 
-    try {
-      const res = await axios.post('http://localhost:8080/api/image', {
-        product,
-        text,
-      });
+  try {
+    // 🔹 1. 이미지 생성 요청
+    const res = await axios.post('http://localhost:8080/api/image', {
+      product,
+      text,
+    });
 
-      console.log('✅ DALL·E 응답:', res.data);
-      setImageUrl(res.data.imageUrl);
-    } catch (err) {
-      console.error('❌ 이미지 생성 오류:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const imageUrl = res.data.imageUrl;
+    setImageUrl(imageUrl);
+
+    console.log('✅ DALL·E 응답:', res.data);
+
+    // 🔹 2. DB 저장 요청
+    await axios.post('http://localhost:8080/userdatainput/content', {
+      userdatainputId: 'test-001', // 추후에 로그인 아이디 받아올 예정정
+      caption: text,
+      imageUrl: imageUrl,
+    });
+
+    console.log('✅ DB 저장 완료');
+
+  } catch (err) {
+    console.error('❌ 이미지 생성 또는 저장 오류:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-xl mx-auto bg-white p-6 rounded shadow">
