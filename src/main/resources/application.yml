@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: meta-ads-simple-test
+  security:
+    oauth2:
+      client:
+        registration:
+          facebook:
+            client-id: 1420881316013363
+            client-secret: e2e382d9509f6ea088f6e025c8ff71c0
+            redirect-uri: "{baseUrl}/login/oauth2/code/facebook"
+            scope:
+              - public_profile
+              - email
+              - ads_management # 광고 관리 권한
+              - ads_read       # 광고 읽기 권한
+              - pages_show_list # 페이지 목록 표시 권한 (광고 계정 관련)
+              - business_management # 비즈니스 관리 권한 (광고 계정 관련)
+        provider:
+          facebook:
+            authorization-uri: https://www.facebook.com/v20.0/dialog/oauth
+            token-uri: https://graph.facebook.com/v20.0/oauth/access_token
+            user-info-uri: https://graph.facebook.com/v20.0/me?fields=id,name,email,picture
+            user-name-attribute: id
+
+server:
+  port: 8080

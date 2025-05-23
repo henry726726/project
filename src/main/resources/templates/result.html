@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 테스트 결과</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        h1 { text-align: center; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin-bottom: 5px; }
+        .back-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+        }
+        .back-button:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Meta Ads API 테스트 결과</h1>
+
+    <div th:if="${message}" class="success">
+        <p th:text="${message}"></p>
+    </div>
+
+    <div th:if="${adAccounts}">
+        <h2>조회된 광고 계정:</h2>
+        <ul>
+            <li th:each="account : ${adAccounts}" th:text="${account}"></li>
+        </ul>
+    </div>
+
+    <div th:if="${campaignResult}" class="success">
+        <h2>캠페인 생성 결과:</h2>
+        <p th:text="${campaignResult}"></p>
+    </div>
+
+    <div th:if="${error}" class="error">
+        <h2>오류 발생:</h2>
+        <p th:text="${error}"></p>
+        <p>자세한 내용은 서버 로그를 확인하세요.</p>
+    </div>
+
+    <br>
+    <a href="/" class="back-button">홈으로 돌아가기</a>
+    <a href="/logout" class="back-button">로그아웃</a>
+</body>
+</html>

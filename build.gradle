@@ -1,43 +1,57 @@
 plugins {
-	id 'java'
-	id 'war'
-	id 'org.springframework.boot' version '3.4.5'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'war' // WAR 파일을 빌드할 경우 유지
+    id 'org.springframework.boot' version '3.2.5' // Spring Boot 버전은 최신 안정 버전으로 맞춰주세요 (3.4.5는 아직 정식 릴리즈가 아닙니다. 현재 안정 버전은 3.2.5)
+    id 'io.spring.dependency-management' version '1.1.5' // Spring Boot 버전에 맞는 dependency-management 버전으로 맞춰주세요
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
-	}
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-	implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // 핵심 Spring Boot 스타터들
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	annotationProcessor 'org.projectlombok:lombok'
-	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Meta Business SDK for Java
+    implementation 'com.facebook.business.sdk:facebook-java-business-sdk:19.0.0' // 최신 버전을 확인하고 사용하세요
+
+    // 다른 유틸리티 라이브러리 (기존에 있었던 것)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0' // Meta SDK 내부에 포함될 수도 있지만, 명시적으로 있으면 좋습니다.
+    implementation 'com.fasterxml.jackson.core:jackson-databind' // Spring Web starter에 포함되어 있을 가능성이 높지만, 명시적으로 있으면 좋습니다.
+
+    // Lombok (편의성)
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // 개발 편의 도구
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat' // WAR 배포용
+
+    // 테스트 의존성
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
