@@ -54,5 +54,24 @@
     <br>
     <a href="/" class="back-button">홈으로 돌아가기</a>
     <a href="/logout" class="back-button">로그아웃</a>
+
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : '1420881316013363', // 당신의 실제 App ID로 교체하세요
+          xfbml      : true,
+          version    : 'v22.0' // 사용하는 API 버전에 맞춰주세요
+        });
+        FB.AppEvents.logPageView();
+      };
+
+      (function(d, s, id){
+         var js, fjs = d.getElementsByTagName(s)[0];
+         if (d.getElementById(id)) {return;}
+         js = d.createElement(s); js.id = id;
+         js.src = "https://connect.facebook.net/en_US/sdk.js";
+         fjs.parentNode.insertBefore(js, fjs);
+       }(document, 'script', 'facebook-jssdk'));
+    </script>
 </body>
 </html>
