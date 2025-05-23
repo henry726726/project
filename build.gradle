@@ -58,3 +58,7 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+springBoot {
+    mainClass = 'com.example.backend.metaads.MetaAdsApplication' // << 이 줄을 추가합니다.
+}

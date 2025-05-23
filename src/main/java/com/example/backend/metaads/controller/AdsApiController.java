@@ -39,8 +39,8 @@ public class AdsApiController {
             if (adAccounts != null && !adAccounts.isEmpty()) {
                 adAccountId = adAccounts.get(0).getId();
                 model.addAttribute("adAccounts", adAccounts.stream()
-                        // **acc.getFieldValue("name") 대신 acc.getName() 사용**
-                        .map(acc -> acc.getName() + " (ID: " + acc.getId() + ")")
+                        // Use getFieldName() instead of getName()
+                        .map(acc -> acc.getFieldName() + " (ID: " + acc.getId() + ")")
                         .collect(Collectors.toList()));
                 model.addAttribute("message", "광고 계정 조회 성공!");
             } else {
@@ -50,8 +50,8 @@ public class AdsApiController {
             if (adAccountId != null) {
                 String campaignName = "Test Campaign " + System.currentTimeMillis();
                 Campaign newCampaign = metaAdsService.createCampaign(accessToken, appSecret, adAccountId, campaignName);
-                // **newCampaign.getFieldValue("name") 대신 newCampaign.getName() 사용**
-                model.addAttribute("campaignResult", "캠페인 생성 성공: " + newCampaign.getName() + " (ID: " + newCampaign.getId() + ")");
+                // Use getFieldName() instead of getName()
+                model.addAttribute("campaignResult", "캠페인 생성 성공: " + newCampaign.getFieldName() + " (ID: " + newCampaign.getId() + ")");
             }
 
         } catch (Exception e) {
