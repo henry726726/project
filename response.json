@@ -1,0 +1,22 @@
+﻿
+
+StatusCode        : 200
+StatusDescription : OK
+Content           : {"data":[{"access_token":"EAAZACFu3jVZBgBOwDq4NlDAXZBDS8yz4SwLHZCHKxhIDY8pRuaf46ZAOPaNTGz2FCUErzZBbZAbD77JZC4w5gidHlTM3oB1dIL9kJnHonH39Xx7IaiKdfohUg4zZCn6qDBYbuLuGC5I5k8ZCxcEmzQRGwRJjBGH
+                    ep7BHr7ZBqGhIv...
+RawContent        : HTTP/1.1 200 OK
+                    Vary: Origin,Accept-Encoding
+                    cross-origin-resource-policy: cross-origin
+                    x-app-usage: {"call_count":3,"total_cputime":0,"total_time":3}
+                    Access-Control-Allow-Origin: *
+                    facebook-api-...
+Forms             : {}
+Headers           : {[Vary, Origin,Accept-Encoding], [cross-origin-resource-policy, cross-origin], [x-app-usage, {"call_count":3,"total_cputime":0,"total_time":3}], [Access-Control-Allow-Origin, *]...}
+Images            : {}
+InputFields       : {}
+Links             : {}
+ParsedHtml        : System.__ComObject
+RawContentLength  : 1332
+
+
+
