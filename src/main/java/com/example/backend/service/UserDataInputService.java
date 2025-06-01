@@ -49,38 +49,4 @@ public class UserDataInputService {
         System.out.println("✅ 저장 대상 userdatainputId: " + userdatainputId);
 
     }
-
-    // 테스트용 코드(추후삭제)
-    @PostConstruct
-    public void init() {
-        // 이미 존재하는 캠페인 불러오기
-        UserDataInput input = userdataRepo.findById("test-001")
-                .orElseThrow(() -> new RuntimeException("❌ 캠페인 test-001이 존재하지 않습니다."));
-
-        // 테스트용 콘텐츠 여러 개 준비
-        List<String[]> testContents = new ArrayList<>();
-        testContents.add(new String[] { "AI가 만든 문구 1", "https://cdn.site.com/image1.jpg" });
-        testContents.add(new String[] { "AI가 만든 문구 2", "https://cdn.site.com/image2.jpg" });
-        testContents.add(new String[] { "AI가 만든 문구 1", "https://cdn.site.com/image1.jpg" }); // 중복
-
-        for (String[] pair : testContents) {
-            String caption = pair[0];
-            String imageUrl = pair[1];
-            String hash = DigestUtils.sha256Hex(caption + imageUrl);
-
-            // 중복 콘텐츠는 건너뜀
-            if (!contentRepo.existsById(hash)) {
-                Content c = new Content();
-                c.setId(hash);
-                c.setCaption(caption);
-                c.setImageUrl(imageUrl);
-                c.setCreatedAt(LocalDateTime.now());
-                c.setUserdatainput(input);
-                contentRepo.save(c);
-                System.out.println("✅ 콘텐츠 저장됨: " + caption);
-            } else {
-                System.out.println("⚠️ 중복 콘텐츠 건너뜀: " + caption);
-            }
-        }
-    }
 }
