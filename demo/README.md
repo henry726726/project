@@ -7,7 +7,8 @@ gpt api는 노션의 ai엔지니어 설명란에 있음
 # 백엔드 시작하는 방법
 
 cd demo
-./gradlew bootRun
+./gradlew bootRun --args='-Dfile.encoding=UTF-8'
+
 
 # 프론트 시작하는방법
 

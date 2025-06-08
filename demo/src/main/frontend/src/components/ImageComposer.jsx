@@ -9,7 +9,7 @@ export default function ImageComposer() {
   const [imageFile, setImageFile] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
   const [generatedTime, setGeneratedTime] = useState(null);
-  const [mode, setMode] = useState('pillow');
+  const [mode, setMode] = useState('controlnet'); // 기본값을 controlnet으로 지정
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
@@ -31,39 +31,29 @@ export default function ImageComposer() {
     if (!imageFile || !selectedText) return;
 
     const form = new FormData();
-
     form.append('image', imageFile);
 
-    if (mode === 'controlnet') {
-      // ✅ ControlNet용 프롬프트 자동 생성
-      const prompt = `사진 하단에 '${selectedText}' 문구를 고급스럽고 광고 스타일로 자연스럽게 삽입하고, 부드러운 글로우 효과를 더해줘.`;
-      form.append('caption', prompt);
-    } else {
-      form.append('text', selectedText); // 기존 방식
-    }
+    const prompt = `Add the text '${selectedText}' to the bottom in a clean, close-up high-resolution advertisement of a silver T&CO ring, on a Tiffany Blue gradient background with sparkles, professional softbox lighting, shallow depth of field, glossy metal, product photography style';
+    form.append('prompt', prompt);
 
-    const url =
-      mode === 'controlnet'
-        ? 'http://localhost:8080/api/generate-image'
-        : 'http://localhost:8080/api/compose';
+    const url = 'http://localhost:8000/generate';
 
     try {
       const timestamp = getTimestampString();
       setGeneratedTime(new Date());
 
-      if (mode === 'controlnet') {
-        const res = await axios.post(url, form);
-        const base64 = res.data.image_base64;
+      const res = await axios.post(url, form);
+      const base64 = res.data?.image_base64;
+
+      if (base64) {
         setResultUrl(`data:image/jpeg;base64,${base64}`);
       } else {
-        const res = await axios.post(url, form, {
-          responseType: 'blob',
-        });
-        const blob = new Blob([res.data], { type: 'image/png' });
-        setResultUrl(URL.createObjectURL(blob));
+        console.error('⚠️ 서버 응답에 image_base64가 없습니다:', res.data);
+        setResultUrl(null);
       }
     } catch (err) {
       console.error('❌ 이미지 합성 오류:', err);
+      setResultUrl(null);
     }
   };
 
@@ -86,7 +76,6 @@ export default function ImageComposer() {
           onChange={(e) => setMode(e.target.value)}
           className="border rounded p-1"
         >
-          <option value="pillow">기존 방식 (텍스트 오버레이)</option>
           <option value="controlnet">AI 스타일 합성 (ControlNet)</option>
         </select>
       </label>
