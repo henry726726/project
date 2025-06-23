@@ -92,7 +92,7 @@ public class MetaAdCreatorService {
     private String createAdSet(String adAccountId, String campaignId, String accessToken) {
         String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/adsets";
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New AdSet2");
+        body.add("name", "New AdSet_2");
         body.add("campaign_id", campaignId);
         body.add("billing_event", "IMPRESSIONS");
         body.add("optimization_goal", "LINK_CLICKS");
@@ -110,7 +110,7 @@ public class MetaAdCreatorService {
     private String createAdCreative(String adAccountId, String accessToken, String caption, String imageUrl) {
         String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/adcreatives";
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New Creative2");
+        body.add("name", "New Creative_2");
         body.add("object_story_spec",
                 String.format("{\"page_id\":\"666307613232481\",\"link_data\":{\"message\":\"%s\",\"link\":\"%s\"}}",
                         caption, imageUrl));
@@ -122,7 +122,7 @@ public class MetaAdCreatorService {
     private void createAd(String adAccountId, String adSetId, String creativeId, String accessToken) {
         String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/ads";
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New Ad");
+        body.add("name", "New Ad_2");
         body.add("adset_id", adSetId);
         body.add("creative", String.format("{\"creative_id\":\"%s\"}", creativeId));
         body.add("status", "PAUSED");

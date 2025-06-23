@@ -1,0 +1,18 @@
+﻿{
+    "data":  [
+                 {
+                     "account_id":  "589855296887739",
+                     "id":  "act_589855296887739"
+                 },
+                 {
+                     "account_id":  "1270922861410448",
+                     "id":  "act_1270922861410448"
+                 }
+             ],
+    "paging":  {
+                   "cursors":  {
+                                   "before":  "MTIwMjI0MDEwOTA3NzkwMjkw",
+                                   "after":  "MTIwMjI0Mzc5MzUxODcwMTcy"
+                               }
+               }
+}

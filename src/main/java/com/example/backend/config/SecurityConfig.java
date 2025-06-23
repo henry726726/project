@@ -25,6 +25,9 @@ public class SecurityConfig {
                                                                 "/login**",
                                                                 "/error**",
                                                                 "/meta/create",
+                                                                "/meta/sync-ads",
+                                                                "/meta/insight",
+                                                                "/meta/insight/test",
                                                                 "/meta/test-update" // ✅ 여기에 추가
                                                 ).permitAll()
                                                 .anyRequest().authenticated())
