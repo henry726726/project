@@ -36,3 +36,10 @@ CORS 허용	        백엔드 컨트롤러에 @CrossOrigin(origins = "*") 추가
 API 키	            .env 또는 application.properties에서 관리 (OPENAI_API_KEY)
 포트 충돌 주의	    백엔드 8080, 프론트 3000에서 실행되도록 유지
 
+# PDF 리포트 생성 프로그램 사용 방법
+1. ./gradlew clean build --refresh-dependencies
+   ./gradlew bootRun를 vs 코드의 터미널 창에서 입력한다.
+
+2. Postman에서 Create new request > method를 POST로 바꾸기 > Body 창에서 raw를 누르고 JSON으로 바꾼 후 텍스트를 입력하기 > send 버튼을 누르기
+   
+3. project 창에서 생성된 PDF를 확인한다.
