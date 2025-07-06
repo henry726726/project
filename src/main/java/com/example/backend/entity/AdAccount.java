@@ -12,6 +12,28 @@ public class AdAccount {
     private String name;
     private String status;
 
+    // 추가할 필드
+    private String pageId;
+    private String instagramId;
+
+    // Getter & Setter
+    public String getPageId() {
+        return pageId;
+    }
+
+    public void setPageId(String pageId) {
+        this.pageId = pageId;
+    }
+
+    public String getInstagramId() {
+        return instagramId;
+    }
+
+    public void setInstagramId(String instagramId) {
+        this.instagramId = instagramId;
+    }
+
+    // 기존 Getter & Setter
     public String getId() {
         return id;
     }

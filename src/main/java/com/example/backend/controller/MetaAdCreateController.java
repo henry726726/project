@@ -12,8 +12,9 @@ public class MetaAdCreateController {
     private MetaAdCreatorService metaAdCreatorService;
 
     @PostMapping("/create")
-    public String createAd(@RequestParam String contentId) {
-        metaAdCreatorService.createInitialAdByContentId(contentId);
-        return "광고 생성 요청 완료";
+    public String createAd(@RequestParam String contentId,
+            @RequestParam(defaultValue = "BOTH") String placementOption) {
+        metaAdCreatorService.createInitialAdByContentId(contentId, placementOption);
+        return "광고 생성 요청 완료 (" + placementOption + ")";
     }
 }
