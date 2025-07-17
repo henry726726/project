@@ -27,7 +27,8 @@ public class AuthService {
     public void signup(SignupRequest request) {
         // ✨ 이메일 중복 체크 (이 부분은 이미 구현되어 있어!)
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다."); // 예외 발생
+            throw new IllegalArgumentException("이미 사용 중인 이메일이나 비밀번호입니다."); // 예외 발생
+            
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
