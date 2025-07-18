@@ -1,4 +1,4 @@
-package com.example.backend.controller;
+/*package com.example.backend.controller;
 
 import com.example.backend.dto.TextGenerationRequest;
 import com.example.backend.dto.TextGenerationResponse;
@@ -88,3 +88,4 @@ public class TextGenerationController {
         }
     }
 }
+*/

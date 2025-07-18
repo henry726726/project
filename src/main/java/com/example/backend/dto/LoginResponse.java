@@ -19,6 +19,6 @@ public class LoginResponse {
         this.message = null; // 성공 시 메시지는 null
     }
 
-    // ✨ 중요: 이전에 수동으로 추가했던 LoginResponse(String message, String token) 생성자는 삭제되어야 합니다.
-    // ✨ @AllArgsConstructor가 이미 (String, String) 형태의 생성자를 만들어주기 때문입니다.
+    // Note: AllArgsConstructor가 (String, String) 형태의 생성자를 만들어주므로,
+    // LoginResponse(String message, String token) 형태의 커스텀 생성자는 중복이 발생하여 제거합니다.
 }
