@@ -1,3 +1,4 @@
+// ImageComposer.jsx 파일
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
@@ -9,7 +10,7 @@ export default function ImageComposer() {
   const [imageFile, setImageFile] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
   const [generatedTime, setGeneratedTime] = useState(null);
-  const [mode, setMode] = useState("controlnet"); // 기본값을 controlnet으로 지정
+  const [mode, setMode] = useState("auto"); // 기본 모드
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
@@ -18,39 +19,31 @@ export default function ImageComposer() {
   const getTimestampString = () => {
     const now = new Date();
     const pad = (n) => n.toString().padStart(2, "0");
-    const yyyy = now.getFullYear();
-    const MM = pad(now.getMonth() + 1);
-    const dd = pad(now.getDate());
-    const hh = pad(now.getHours());
-    const mm = pad(now.getMinutes());
-    const ss = pad(now.getSeconds());
-    return `${yyyy}-${MM}-${dd}_${hh}-${mm}-${ss}`;
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+      now.getDate()
+    )}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(
+      now.getSeconds()
+    )}`;
   };
 
   const handleCompose = async () => {
     if (!imageFile || !selectedText) return;
 
     const form = new FormData();
-    form.append("image", imageFile);
+    form.append("image_file", imageFile);
+    form.append("text", selectedText);
+    form.append("layout", mode); // 선택된 모드 값 전송
 
-    // Prompt 문자열의 백틱(`) 사용에 주의하세요.
-    // 변수 ${selectedText}가 제대로 삽입되도록 템플릿 리터럴로 전체를 감쌌습니다.
-    const prompt = `Add the text '${selectedText}' to the bottom in a clean, close-up high-resolution advertisement of a silver T&CO ring, on a Tiffany Blue gradient background with sparkles, professional softbox lighting, shallow depth of field, glossy metal, product photography style`;
-    form.append("prompt", prompt);
-
-    // 만약 백엔드에서 합성 방식(mode)을 사용한다면 이 줄을 추가하세요.
-    // form.append('mode', mode);
-
-    const url = "http://localhost:8000/generate";
+    const url = "http://localhost:8000/add_text_to_image";
 
     try {
-      setGeneratedTime(new Date()); // 요청 시작 시각 기록
+      setGeneratedTime(new Date());
 
       const res = await axios.post(url, form);
       const base64 = res.data?.image_base64;
 
       if (base64) {
-        setResultUrl(`data:image/jpeg;base64,${base64}`);
+        setResultUrl(`data:image/png;base64,${base64}`);
       } else {
         console.error("⚠️ 서버 응답에 image_base64가 없습니다:", res.data);
         setResultUrl(null);
@@ -61,14 +54,10 @@ export default function ImageComposer() {
     }
   };
 
-  const formatKoreanTime = (date) => {
-    return (
-      `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ` +
-      `${date.getHours()}시 ${date.getMinutes()}분 ${date.getSeconds()}초`
-    );
-  };
+  const formatKoreanTime = (date) =>
+    `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ` +
+    `${date.getHours()}시 ${date.getMinutes()}분 ${date.getSeconds()}초`;
 
-  // 다운로드 파일 이름에 타임스탬프를 포함
   const downloadFileName = `composite_${getTimestampString()}.png`;
 
   return (
@@ -79,13 +68,18 @@ export default function ImageComposer() {
       </p>
 
       <label className="block mt-4">
-        <span className="mr-2 font-medium">합성 방식:</span>
+        <span className="mr-2 font-medium">레이아웃 방식:</span>
         <select
           value={mode}
           onChange={(e) => setMode(e.target.value)}
           className="border rounded p-1"
         >
-          <option value="controlnet">AI 스타일 합성 (ControlNet)</option>
+          <option value="auto">자동 배치</option>
+          <option value="box">상자 배치 (이미지 위에 겹침)</option>
+          <option value="expanded-side-box">
+            새로운 상자 (이미지 옆에 붙임)
+          </option>{" "}
+          {/* 이 부분 추가 */}
         </select>
       </label>
 
