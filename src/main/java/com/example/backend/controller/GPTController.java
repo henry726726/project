@@ -26,11 +26,21 @@ public class GPTController {
 
     @PostMapping("/generate")
     public Map<String, Object> generate(@RequestBody PromptRequest request) throws IOException {
+        // 🔹 확장된 프롬프트 템플릿
         String prompt = String.format(
-                "다음 제품 정보를 바탕으로 [%s] 톤의 광고 문구 2개를 작성해줘. 30자 이내로 CTA 포함.\n" +
-                        "제품: %s\n응답 형식: [\"문구1\", \"문구2\"]",
-                request.getStyle(),
-                request.getProduct());
+                "다음 광고 정보를 바탕으로 문장은 짧고 강렬하게, 실제 온라인 광고 문구처럼 3개를 작성해줘. 각 문구는 30자 이내이며 CTA(Call-to-Action)를 포함해야 해.\n\n" +
+                        "제품명: %s\n" +
+                        "타겟: %s\n" +
+                        "목적: %s\n" +
+                        "강조 키워드: %s\n" +
+                        "광고 기간: %s\n\n" +
+                        "응답 형식: [\"문구1\", \"문구2\", \"문구3\"]",
+
+                request.getProduct(),
+                request.getTarget(),
+                request.getPurpose(),
+                request.getKeyword(),
+                request.getDuration());
 
         System.out.println("GPT 프롬프트:\n" + prompt);
 
@@ -38,7 +48,7 @@ public class GPTController {
         Map<String, Object> body = Map.of("model", "gpt-4", "messages", List.of(message));
         String json = mapper.writeValueAsString(body);
 
-        okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(json, mediaType); // ← 순서 바뀜
+        okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(json, mediaType);
         Request gptRequest = new Request.Builder()
                 .url("https://api.openai.com/v1/chat/completions")
                 .post(requestBody)

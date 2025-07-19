@@ -1,7 +1,17 @@
 import React from 'react';
-import PromptForm from './main/PromptForm'; 
+import { BrowserRouter, Routes, Route } from 'react-router-dom'; 
+import PromptForm from './components/PromptForm';
+import ImageComposer from './components/ImageComposer';
 
-
-export default function App() {
-  return <PromptForm />;
+function App() {
+  return (
+    <BrowserRouter>  
+      <Routes>
+        <Route path="/" element={<PromptForm />} />
+        <Route path="/compose" element={<ImageComposer />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
+
+export default App;

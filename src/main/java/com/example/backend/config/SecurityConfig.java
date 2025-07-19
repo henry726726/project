@@ -18,23 +18,25 @@ public class SecurityConfig {
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
-                                .csrf().disable() // CSRF 비활성화 (테스트용)
+                                .csrf().disable() // CSRF 비활성화
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(
-                                                                "/",
-                                                                "/login**",
-                                                                "/error**",
+                                                                "/", "/login**", "/error**",
+
+                                                                // ✅ 여기에 CORS 허용하고 싶은 엔드포인트 모두 추가
+                                                                "/api/generate", // GPT 광고 문구 생성
                                                                 "/meta/create",
                                                                 "/meta/sync-ads",
                                                                 "/meta/insight",
                                                                 "/meta/insight/test",
-                                                                "/meta/test-update" // ✅ 여기에 추가
-                                                ).permitAll()
+                                                                "/meta/test-update")
+                                                .permitAll()
                                                 .anyRequest().authenticated())
+                                .cors() // ✅ CORS 활성화
+                                .and()
                                 .oauth2Login(oauth -> oauth
                                                 .successHandler(successHandler));
 
                 return http.build();
         }
-
 }

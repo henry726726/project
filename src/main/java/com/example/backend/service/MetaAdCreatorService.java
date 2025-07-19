@@ -14,10 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import java.util.*;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 @Service
 public class MetaAdCreatorService {
@@ -34,8 +34,7 @@ public class MetaAdCreatorService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void createInitialAdByContentId(String contentId, String placementOption) {
-
+    public void createInitialAdByContentId(String contentId) {
         Content content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new RuntimeException("콘텐츠 없음"));
 
@@ -44,11 +43,10 @@ public class MetaAdCreatorService {
         String imageUrl = content.getImageUrl();
 
         String accessToken = getAccessToken(userId);
-
         String adAccountId = getAdAccountId();
 
         String campaignId = createCampaign(adAccountId, accessToken);
-        String adSetId = createAdSet(adAccountId, campaignId, accessToken, placementOption);
+        String adSetId = createAdSet(adAccountId, campaignId, accessToken);
         String creativeId = createAdCreative(adAccountId, accessToken, caption, imageUrl);
 
         createAd(adAccountId, adSetId, creativeId, accessToken);
@@ -79,7 +77,7 @@ public class MetaAdCreatorService {
         return postAndExtractId(url, body);
     }
 
-    private String createAdSet(String adAccountId, String campaignId, String accessToken, String placementOption) {
+    private String createAdSet(String adAccountId, String campaignId, String accessToken) {
         String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/adsets";
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("name", "New AdSet_2");
@@ -89,10 +87,7 @@ public class MetaAdCreatorService {
         body.add("bid_strategy", "LOWEST_COST_WITHOUT_CAP");
         body.add("daily_budget", "140000");
         body.add("start_time", String.valueOf(Instant.now().plus(1, ChronoUnit.MINUTES).getEpochSecond()));
-
-        String targetingJson = getTargetingJson(placementOption);
-        body.add("targeting", targetingJson);
-
+        body.add("targeting", getFacebookTargetingJson());
         body.add("status", "PAUSED");
         body.add("access_token", accessToken);
 
@@ -101,12 +96,13 @@ public class MetaAdCreatorService {
 
     private String createAdCreative(String adAccountId, String accessToken, String caption, String imageUrl) {
         String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/adcreatives";
+        String objectStorySpecJson = String.format(
+                "{\"page_id\":\"666307613232481\",\"link_data\":{\"message\":\"%s\",\"link\":\"%s\"}}",
+                caption, imageUrl);
+
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("name", "New Creative_2");
-        body.add("object_story_spec",
-                String.format(
-                        "{\"page_id\":\"666307613232481\",\"instagram_actor_id\":\"17841475488048649\",\"link_data\":{\"message\":\"%s\",\"link\":\"%s\"}}",
-                        caption, imageUrl));
+        body.add("object_story_spec", objectStorySpecJson);
         body.add("access_token", accessToken);
 
         return postAndExtractId(url, body);
@@ -145,26 +141,11 @@ public class MetaAdCreatorService {
         return headers;
     }
 
-    private String getTargetingJson(String placementOption) {
+    private String getFacebookTargetingJson() {
         Map<String, Object> targeting = new HashMap<>();
         targeting.put("geo_locations", Collections.singletonMap("countries", Arrays.asList("KR")));
-
-        switch (placementOption.toUpperCase()) {
-            case "INSTAGRAM":
-                targeting.put("publisher_platforms", Arrays.asList("instagram"));
-                targeting.put("instagram_positions", Arrays.asList("story", "reels"));
-                break;
-            case "FACEBOOK":
-                targeting.put("publisher_platforms", Arrays.asList("facebook"));
-                targeting.put("facebook_positions", Arrays.asList("feed", "right_hand_column"));
-                break;
-            case "BOTH":
-            default:
-                targeting.put("publisher_platforms", Arrays.asList("facebook", "instagram"));
-                targeting.put("facebook_positions", Arrays.asList("feed"));
-                targeting.put("instagram_positions", Arrays.asList("feed", "story"));
-                break;
-        }
+        targeting.put("publisher_platforms", Arrays.asList("facebook"));
+        targeting.put("facebook_positions", Arrays.asList("feed", "right_hand_column"));
 
         try {
             return new ObjectMapper().writeValueAsString(targeting);

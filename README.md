@@ -1,49 +1,70 @@
-# project
-본 프로젝트를 실행하기위해서는 application.properties에 gpt api를 작성하고 백엔드를 먼저 실행하고, 이후 프론트를 실행시켜 결과물을 확인해야함.
+# Getting Started with Create React App
 
-gpt api는 노션의 ai엔지니어 설명란에 있음
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Available Scripts
 
-# 백엔드 시작하는 방법
+In the project directory, you can run:
 
-cd demo
-./gradlew bootRun
+### `npm start`
 
-# 프론트 시작하는방법
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-## 최초 실행시
-cd src/main/frontend
-npm install
-npm start
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
 
-기본적으로 브라우저에서 http://localhost:3000에 열림
+### `npm test`
 
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-✅ API 연동 구조
-React → Spring Boot → OpenAI
+### `npm run build`
 
-프론트: POST http://localhost:8080/api/generate
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-백엔드: GPT API 호출 후 응답 전달
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-응답 예시: "output": "[\"문구1\", \"문구2\"]"
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
+### `npm run eject`
 
-✅ 주의사항
-항목	            내용
-CORS 허용	        백엔드 컨트롤러에 @CrossOrigin(origins = "*") 추가
-백엔드 먼저 실행	React가 백엔드에 요청하기 때문에 순서 중요
-API 키	            .env 또는 application.properties에서 관리 (OPENAI_API_KEY)
-포트 충돌 주의	    백엔드 8080, 프론트 3000에서 실행되도록 유지
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-# application.properties 수정 필요
-api키, db연결 코드 작성
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-# db 연결 후 user_data_input에 id 하나 생성 필수
-id 생성 후 그 id에 맞게 PromptForm.jsx의
-// 🔹 2. DB 저장 요청
-    await axios.post('http://localhost:8080/userdatainput/content', {
-      userdatainputId: 'test-001', // 추후에 로그인 아이디 받아올 예정정
-      caption: text,
-      imageUrl: imageUrl,
-    }); 이 부분 id 수정하면 돌아감
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+
+## Learn More
+
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+
+To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Code Splitting
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
