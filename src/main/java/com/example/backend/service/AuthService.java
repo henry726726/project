@@ -29,7 +29,12 @@ public class AuthService {
     @Transactional
     public void signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
+<<<<<<< HEAD
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+=======
+            throw new IllegalArgumentException("이미 사용 중인 이메일이나 비밀번호입니다."); // 예외 발생
+            
+>>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f
         }
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         User newUser = new User(request.getEmail(), encodedPassword, request.getNickname());

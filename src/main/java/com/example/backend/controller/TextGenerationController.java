@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /*package com.example.backend.controller;
+=======
+package com.example.backend.controller;
+>>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f
 
 import com.example.backend.dto.TextGenerationRequest;
 import com.example.backend.dto.TextGenerationResponse;
@@ -87,5 +91,9 @@ public class TextGenerationController {
                                  .body(new TextGenerationResponse(Collections.singletonList("문구 생성 중 예외 발생: " + e.getMessage())));
         }
     }
+<<<<<<< HEAD
 }
 */
+=======
+}
+>>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f

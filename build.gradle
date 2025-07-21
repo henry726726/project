@@ -16,7 +16,7 @@ dependencies {
     // ✅ Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // ✅ Spring Security
+    // ✅ Spring Security (필요하다면 SecurityConfig.java와 함께 사용)
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
     // ✅ JWT (jjwt 0.11.x 버전은 모듈별로 따로 명시해야 함)
@@ -29,8 +29,12 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     // ✅ Lombok
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
 
     // ✅ 테스트 (선택)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

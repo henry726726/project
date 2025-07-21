@@ -9,6 +9,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer; // ✅ 새로 추가된 임포트!
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,6 +30,13 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
 
+    // ✅ 핵심 변경: /api/generate 경로를 시큐리티 필터 체인에서 완전히 제외!
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring()
+                           .requestMatchers("/api/generate"); // 이 경로에 대한 모든 보안 검사를 무시
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -37,14 +45,24 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+<<<<<<< HEAD
                 .requestMatchers("/auth/**").permitAll() // 회원가입, 로그인 경로는 모두 허용
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight 요청 허용
                 .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
+=======
+                // /api/generate는 webSecurityCustomizer에서 이미 무시했으므로 여기선 제외 (불필요)
+                .requestMatchers("/auth/**").permitAll() // 인증 관련 경로는 인증 없이 허용
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // OPTIONS 메서드도 모든 경로 허용 (CORS Preflight)
+                .anyRequest().authenticated()                 // 그 외 모든 요청은 인증 필요
+>>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f
             )
+            // JWT 인증 필터 추가. /api/generate는 이미 위에 ignore 됐으니 이 필터의 영향을 받지 않음
             .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+    // 아래 빈들은 그대로 유지
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -67,7 +85,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+<<<<<<< HEAD
         config.setAllowedOrigins(List.of("http://localhost:8080")); // 프론트 주소 (필요 시 더 추가)
+=======
+        config.setAllowedOrigins(List.of("http://localhost:3000")); // 프론트엔드 주소
+>>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
