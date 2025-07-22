@@ -1,141 +1,207 @@
-// src/FacebookInput.jsx
-
 import React, { useState } from 'react';
 
 function FacebookInput() {
-  const [postContent, setPostContent] = useState('');
+  // 광고 설정 값들을 저장할 상태
+  const [adSettings, setAdSettings] = useState({
+    billingEvent: 'IMPRESSIONS', // 기본값 설정
+    optimizationGoal: 'LINK_CLICKS', // 기본값 설정
+    bidStrategy: 'LOWEST_COST_WITHOUT_CAP', // 기본값 설정
+    dailyBudget: '', // 초기에는 비워둠 (숫자 입력)
+    startTime: '', // 초기에는 비워둠 (날짜/시간 입력)
+  });
 
-  // 입력 필드의 값이 변경될 때마다 postContent 상태를 업데이트하는 함수
-  const handleContentChange = (event) => {
-    setPostContent(event.target.value);
+  // 입력 필드 값이 변경될 때 상태를 업데이트하는 함수
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setAdSettings(prevSettings => ({
+      ...prevSettings,
+      [name]: value,
+    }));
   };
 
-  // '게시' 버튼을 클릭했을 때 실행될 함수
-  const handlePost = () => {
-    if (!postContent.trim()) {
-      alert('게시할 내용을 입력해주세요! 😅');
-      return;
-    }
+  // '설정 저장' 버튼을 클릭했을 때 실행될 함수
+  const handleSaveSettings = () => {
+    // 여기에 실제 백엔드 서버로 데이터를 전송하는 로직이 들어갈 거예요.
+    // 예를 들어, axios.post('/api/meta/ad-settings', adSettings);
+    console.log('저장할 광고 설정:', adSettings);
+    alert('광고 설정이 저장되었습니다! 🎉');
+  };
 
-    // 실제로는 여기에 서버로 데이터를 전송하는 로직이 들어갈 거야.
-    // 지금은 간단히 콘솔에 내용을 출력하고 입력창을 비워줄게.
-    console.log('게시 내용:', postContent);
-    alert('게시글이 작성되었습니다! 🎉');
-    setPostContent(''); // 게시 후 입력창 비우기
+  // 현재 설정 미리보기를 위한 컴포넌트 내부 스타일
+  const tdStyle = {
+    border: '1px solid #ccc',
+    padding: '8px',
+    verticalAlign: 'top',
+    fontWeight: 'normal',
+    color: '#555'
+  };
+  const thStyle = {
+    border: '1px solid #ccc',
+    padding: '8px',
+    backgroundColor: '#e0e0e0',
+    textAlign: 'left',
+    fontWeight: 'bold',
+    color: '#333',
+    width: '40%'
   };
 
   return (
     <div style={{
       maxWidth: '600px',
       margin: '40px auto',
-      padding: '20px',
+      padding: '25px',
       border: '1px solid #ddd',
-      borderRadius: '8px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      borderRadius: '10px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
       backgroundColor: '#fff',
       fontFamily: 'Arial, sans-serif'
     }}>
-      <h2 style={{ color: '#333', textAlign: 'center', marginBottom: '25px' }}>💬 페이스북 입력창</h2>
+      <h2 style={{ color: '#333', textAlign: 'center', marginBottom: '30px' }}>📊 페이스북 광고 설정</h2>
 
-      {/* 상단 프로필 이미지 및 입력 시작 부분 */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          backgroundColor: '#e0e0e0', // 프로필 이미지 대체 색상
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          color: '#777',
-          fontWeight: 'bold',
-          fontSize: '18px',
-          marginRight: '10px'
-        }}>
-          👤
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        {/* 과금 기준 (billingEvent) */}
+        <div>
+          <label style={labelStyle}>과금 기준 (Billing Event):</label>
+          <select
+            name="billingEvent"
+            value={adSettings.billingEvent}
+            onChange={handleChange}
+            style={inputStyle}
+          >
+            <option value="IMPRESSIONS">노출 (IMPRESSIONS)</option>
+            <option value="LINK_CLICKS">링크 클릭 (LINK_CLICKS)</option>
+            {/* 추가 옵션은 Meta API 문서 참고 */}
+          </select>
         </div>
-        <textarea
-          value={postContent}
-          onChange={handleContentChange}
-          placeholder="무슨 생각을 하고 계신가요, 블랙맘바?"
-          rows="4"
+
+        {/* 최적화 목표 (optimizationGoal) */}
+        <div>
+          <label style={labelStyle}>최적화 목표 (Optimization Goal):</label>
+          <select
+            name="optimizationGoal"
+            value={adSettings.optimizationGoal}
+            onChange={handleChange}
+            style={inputStyle}
+          >
+            <option value="LINK_CLICKS">링크 클릭 (LINK_CLICKS)</option>
+            <option value="REACH">도달 (REACH)</option>
+            <option value="CONVERSIONS">전환 (CONVERSIONS)</option>
+            {/* 추가 옵션은 Meta API 문서 참고 */}
+          </select>
+        </div>
+
+        {/* 입찰 방식 (bidStrategy) */}
+        <div>
+          <label style={labelStyle}>입찰 방식 (Bid Strategy):</label>
+          <select
+            name="bidStrategy"
+            value={adSettings.bidStrategy}
+            onChange={handleChange}
+            style={inputStyle}
+          >
+            <option value="LOWEST_COST_WITHOUT_CAP">최저 비용 (LOWEST_COST_WITHOUT_CAP)</option>
+            <option value="COST_CAP">비용 상한 (COST_CAP)</option>
+            {/* 추가 옵션은 Meta API 문서 참고 */}
+          </select>
+        </div>
+
+        {/* 하루 예산 (dailyBudget) */}
+        <div>
+          <label style={labelStyle}>하루 예산 (Daily Budget - 원):</label>
+          <input
+            type="number" // 숫자만 입력 가능
+            name="dailyBudget"
+            value={adSettings.dailyBudget}
+            onChange={handleChange}
+            placeholder="예: 140000 (1400원)"
+            style={inputStyle}
+          />
+        </div>
+
+        {/* 광고 시작 시간 (startTime) */}
+        <div>
+          <label style={labelStyle}>광고 시작 시간 (Start Time):</label>
+          <input
+            type="datetime-local" // 날짜와 시간 선택 필드
+            name="startTime"
+            value={adSettings.startTime}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+        </div>
+
+        {/* 설정 저장 버튼 */}
+        <button
+          onClick={handleSaveSettings}
           style={{
-            flexGrow: 1, // 남은 공간을 모두 차지하도록
-            padding: '10px',
+            width: '100%',
+            padding: '12px 20px',
+            marginTop: '20px',
+            backgroundColor: '#1877F2',
+            color: 'white',
             border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            backgroundColor: '#f0f2f5', // 페이스북 입력창 배경색
-            resize: 'none', // 크기 조절 불가
-            outline: 'none' // 포커스 시 테두리 제거
+            borderRadius: '6px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease',
+            boxShadow: '0 4px 8px rgba(24,119,242,0.2)'
           }}
-        />
-      </div>
-
-      {/* 구분선 */}
-      <hr style={{ border: '0', borderTop: '1px solid #e0e0e0', margin: '20px 0' }} />
-
-      {/* 하단 버튼 영역 */}
-      <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
-        <button style={{
-          flex: 1,
-          padding: '10px',
-          backgroundColor: 'transparent',
-          border: 'none',
-          color: '#65676B',
-          fontWeight: 'bold',
-          fontSize: '15px',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '5px',
-          transition: 'background-color 0.2s ease'
-        }} onMouseOver={e => e.currentTarget.style.backgroundColor = '#f0f2f5'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-          📸 사진/동영상
-        </button>
-        <button style={{
-          flex: 1,
-          padding: '10px',
-          backgroundColor: 'transparent',
-          border: 'none',
-          color: '#65676B',
-          fontWeight: 'bold',
-          fontSize: '15px',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '5px',
-          transition: 'background-color 0.2s ease'
-        }} onMouseOver={e => e.currentTarget.style.backgroundColor = '#f0f2f5'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-          😊 기분/활동
+          onMouseOver={e => e.currentTarget.style.backgroundColor = '#105fb2'}
+          onMouseOut={e => e.currentTarget.style.backgroundColor = '#1877F2'}
+        >
+          설정 저장하기
         </button>
       </div>
 
-      {/* 게시 버튼 */}
-      <button
-        onClick={handlePost}
-        disabled={!postContent.trim()} // 내용이 없으면 버튼 비활성화
-        style={{
-          width: '100%',
-          padding: '12px 20px',
-          backgroundColor: postContent.trim() ? '#1877F2' : '#E4E6EB', // 내용 있으면 파란색, 없으면 회색
-          color: postContent.trim() ? 'white' : '#BCBFC4',
-          border: 'none',
-          borderRadius: '6px',
-          fontSize: '18px',
-          fontWeight: 'bold',
-          cursor: postContent.trim() ? 'pointer' : 'not-allowed',
-          transition: 'background-color 0.2s ease'
-        }}
-      >
-        게시
-      </button>
+      {/* 현재 설정 미리보기 */}
+      <div style={{ marginTop: '40px', padding: '15px', backgroundColor: '#eef3f9', borderRadius: '8px', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)' }}>
+        <h3 style={{ color: '#444', marginBottom: '15px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>현재 설정 미리보기</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr>
+              <th style={thStyle}>과금 기준</th>
+              <td style={tdStyle}>{adSettings.billingEvent || '미설정'}</td>
+            </tr>
+            <tr>
+              <th style={thStyle}>최적화 목표</th>
+              <td style={tdStyle}>{adSettings.optimizationGoal || '미설정'}</td>
+            </tr>
+            <tr>
+              <th style={thStyle}>입찰 방식</th>
+              <td style={tdStyle}>{adSettings.bidStrategy || '미설정'}</td>
+            </tr>
+            <tr>
+              <th style={thStyle}>하루 예산</th>
+              <td style={tdStyle}>{adSettings.dailyBudget ? `${adSettings.dailyBudget} 원` : '미설정'}</td>
+            </tr>
+            <tr>
+              <th style={thStyle}>광고 시작 시간</th>
+              <td style={tdStyle}>{adSettings.startTime || '미설정'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
+
+// 공통 스타일 정의
+const labelStyle = {
+  display: 'block',
+  marginBottom: '5px',
+  fontWeight: 'bold',
+  color: '#444',
+  fontSize: '0.95em'
+};
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid #ccc',
+  borderRadius: '5px',
+  fontSize: '1em',
+  boxSizing: 'border-box'
+};
 
 export default FacebookInput;
