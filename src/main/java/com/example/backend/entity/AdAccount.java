@@ -1,6 +1,8 @@
 package com.example.backend.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.example.backend.entity.User;
 
 @Entity
 public class AdAccount {
@@ -10,30 +12,17 @@ public class AdAccount {
 
     private String accountId;
     private String name;
-    private String status;
 
-    // 추가할 필드
     private String pageId;
     private String instagramId;
 
-    // Getter & Setter
-    public String getPageId() {
-        return pageId;
-    }
+    // ✅ 광고 계정 → 사용자 연관관계 (N:1)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id") // 외래키 컬럼명
+    @JsonBackReference // 순환참조 방지
+    private User user;
 
-    public void setPageId(String pageId) {
-        this.pageId = pageId;
-    }
-
-    public String getInstagramId() {
-        return instagramId;
-    }
-
-    public void setInstagramId(String instagramId) {
-        this.instagramId = instagramId;
-    }
-
-    // 기존 Getter & Setter
+    // --- Getter & Setter ---
     public String getId() {
         return id;
     }
@@ -58,11 +47,27 @@ public class AdAccount {
         this.name = name;
     }
 
-    public String getStatus() {
-        return status;
+    public String getPageId() {
+        return pageId;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setPageId(String pageId) {
+        this.pageId = pageId;
+    }
+
+    public String getInstagramId() {
+        return instagramId;
+    }
+
+    public void setInstagramId(String instagramId) {
+        this.instagramId = instagramId;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

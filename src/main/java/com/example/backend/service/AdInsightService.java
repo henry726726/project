@@ -10,7 +10,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 @Service
 public class AdInsightService {
@@ -19,8 +18,9 @@ public class AdInsightService {
     private AdInsightRepository insightRepository;
 
     public void fetchAndStoreInsights(String adId, String accessToken) {
+        // ✅ age, gender는 fields가 아니라 breakdowns로 요청해야 함
         String url = String.format(
-                "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency,age,gender&access_token=%s",
+                "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency&access_token=%s",
                 adId, accessToken);
 
         try {
@@ -31,11 +31,18 @@ public class AdInsightService {
             JsonNode root = mapper.readTree(json);
             JsonNode dataArray = root.get("data");
 
+            if (dataArray == null || !dataArray.isArray() || dataArray.size() == 0) {
+                System.out.println("⚠️ 광고 성과 데이터가 없습니다.");
+                return;
+            }
+
             for (JsonNode node : dataArray) {
                 AdInsight insight = new AdInsight();
                 insight.setAdId(adId);
-                String age = node.get("age").asText();
-                String gender = node.get("gender").asText();
+
+                // 안전하게 값 추출
+                String age = node.path("age").isMissingNode() ? null : node.path("age").asText();
+                String gender = node.path("gender").isMissingNode() ? null : node.path("gender").asText();
 
                 int impressions = Integer.parseInt(node.get("impressions").asText("0"));
                 int clicks = Integer.parseInt(node.get("clicks").asText("0"));

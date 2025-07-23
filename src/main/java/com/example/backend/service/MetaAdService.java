@@ -1,7 +1,9 @@
 package com.example.backend.service;
 
 import com.example.backend.entity.AdAccount;
+import com.example.backend.entity.User;
 import com.example.backend.repository.AdAccountRepository;
+import com.example.backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,69 +15,75 @@ public class MetaAdService {
     @Autowired
     private AdAccountRepository adAccountRepo;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    // ✅ 원래 있던 기본 메서드 복원 (User 없이 저장)
     public void saveAdAccounts(String accessToken) {
+        saveAdAccountsInternal(accessToken, null);
+    }
+
+    // ✅ 로그인 사용자 기반 저장
+    public void saveAdAccountsForUser(String accessToken, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        saveAdAccountsInternal(accessToken, user);
+    }
+
+    // ✅ 명시적으로 User 없이 저장
+    public void saveAdAccountsWithoutUser(String accessToken) {
+        saveAdAccountsInternal(accessToken, null);
+    }
+
+    // ✅ 공통 저장 로직 (비즈니스 계정 여부 상관없이 전체 광고 계정 저장)
+    private void saveAdAccountsInternal(String accessToken, User user) {
         RestTemplate restTemplate = new RestTemplate();
 
         try {
-            // 1. 연결된 비즈니스 목록 조회
-            String businessUrl = "https://graph.facebook.com/v20.0/me/businesses?access_token=" + accessToken;
-            JsonNode businessJson = restTemplate.getForObject(businessUrl, JsonNode.class);
-            JsonNode businessList = businessJson.path("data");
+            // ✅ 광고 계정 전체 조회
+            String adAccountUrl = "https://graph.facebook.com/v20.0/me/adaccounts?fields=id,account_id,name&access_token="
+                    + accessToken;
+            JsonNode adAccountsJson = restTemplate.getForObject(adAccountUrl, JsonNode.class);
+            System.out.println("▶ 내 광고 계정 응답:\n" + adAccountsJson.toPrettyString());
 
-            if (businessList.isEmpty()) {
-                System.out.println("❌ 연결된 비즈니스 계정이 없습니다.");
-                return;
-            }
-
-            // 2. 페이지 목록 미리 조회
+            // ✅ 페이지 목록 조회
             String pageUrl = "https://graph.facebook.com/v20.0/me/accounts?access_token=" + accessToken;
             JsonNode pagesJson = restTemplate.getForObject(pageUrl, JsonNode.class);
             System.out.println("▶ 페이지 목록 응답:\n" + pagesJson.toPrettyString());
 
-            // 3. 각 비즈니스에 대해 광고 계정 조회 및 저장
-            for (JsonNode business : businessList) {
-                String businessId = business.path("id").asText();
+            for (JsonNode account : adAccountsJson.path("data")) {
+                String adId = account.path("id").asText();
+                String accountId = account.path("account_id").asText();
+                String name = account.path("name").asText();
 
-                String adAccountUrl = "https://graph.facebook.com/v20.0/" + businessId +
-                        "/owned_ad_accounts?fields=id,account_id,name,status&access_token=" + accessToken;
-                JsonNode adAccountsJson = restTemplate.getForObject(adAccountUrl, JsonNode.class);
-                System.out.println("▶ 비즈니스 ID " + businessId + "의 광고 계정 응답:\n" + adAccountsJson.toPrettyString());
+                for (JsonNode page : pagesJson.path("data")) {
+                    String pageId = page.path("id").asText();
 
-                for (JsonNode account : adAccountsJson.path("data")) {
-                    String adId = account.path("id").asText();
-                    String accountId = account.path("account_id").asText();
-                    String name = account.path("name").asText();
-                    String status = account.has("status") ? account.get("status").asText() : null;
+                    // ✅ 인스타그램 ID 조회
+                    String instaUrl = "https://graph.facebook.com/v20.0/" + pageId +
+                            "?fields=instagram_business_account&access_token=" + accessToken;
+                    JsonNode instaJson = restTemplate.getForObject(instaUrl, JsonNode.class);
 
-                    for (JsonNode page : pagesJson.path("data")) {
-                        String pageId = page.path("id").asText();
-
-                        // Instagram ID 요청
-                        String instaUrl = "https://graph.facebook.com/v20.0/" + pageId +
-                                "?fields=instagram_business_account&access_token=" + accessToken;
-                        JsonNode instaJson = restTemplate.getForObject(instaUrl, JsonNode.class);
-
-                        String instagramId = null;
-                        JsonNode instaNode = instaJson.get("instagram_business_account");
-                        if (instaNode != null && instaNode.has("id")) {
-                            instagramId = instaNode.get("id").asText();
-                        }
-
-                        // DB 저장
-                        AdAccount ad = new AdAccount();
-                        ad.setId(adId + "_" + pageId); // 중복 방지용 조합
-                        ad.setAccountId(accountId);
-                        ad.setName(name);
-                        ad.setStatus(status);
-                        ad.setPageId(pageId);
-                        ad.setInstagramId(instagramId);
-
-                        adAccountRepo.save(ad);
+                    String instagramId = null;
+                    JsonNode instaNode = instaJson.get("instagram_business_account");
+                    if (instaNode != null && instaNode.has("id")) {
+                        instagramId = instaNode.get("id").asText();
                     }
+
+                    // ✅ 저장
+                    AdAccount ad = new AdAccount();
+                    ad.setId(adId + "_" + pageId); // 고유 ID 보장
+                    ad.setAccountId(accountId);
+                    ad.setName(name);
+                    ad.setPageId(pageId);
+                    ad.setInstagramId(instagramId);
+                    ad.setUser(user); // null 허용
+
+                    adAccountRepo.save(ad);
                 }
             }
 
-            System.out.println("✅ 비즈니스 포트폴리오 광고 계정 저장 완료");
+            System.out.println("✅ 광고 계정 저장 완료");
 
         } catch (Exception e) {
             System.out.println("❌ 저장 중 오류 발생");
