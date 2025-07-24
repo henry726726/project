@@ -1,0 +1,129 @@
+[33mcommit aefc0481b52b7819b96759dfc5e98a9955711bfd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mJunghan_TextGenerator[m[33m)[m
+Author: JungHan <jhstone034679@gmain.com>
+Date:   Thu Jul 24 17:17:58 2025 +0900
+
+    문구 생성/이미지 생성/페북 입력 프롬프트 수정/문구와 이미지 MySQL에 저장
+
+[33mcommit e5cafb4934af284cf5704a38fdb463d2d9245270[m
+Author: JungHan <jhstone034679@gmain.com>
+Date:   Thu Jul 24 17:09:29 2025 +0900
+
+    문구 생성/이미지 생성/페북 입력 프롬프트 수정/문구와 이미지 MySQL에 저장
+
+[33mcommit 452a5f120caff50b6de113bfd63fba12d907b668[m[33m ([m[1;31morigin/Junghan_TextGenerator[m[33m)[m
+Author: JungHan <jhstone034679@gmain.com>
+Date:   Tue Jul 22 15:56:47 2025 +0900
+
+    문구 생성/이미지 생성/페북 입력 프롬프트 수정
+
+[33mcommit 9226d0fe3dcda2263e04fa6872808c3fa5718459[m
+Merge: f2bcc7899 3d709e8b3
+Author: JungHan <jhstone034679@gmain.com>
+Date:   Mon Jul 21 17:59:49 2025 +0900
+
+    문구 생성/이미지 생성/페북 입력 프롬프트 수정
+
+[33mcommit f2bcc7899e1ab8a499cc09e1af70a86ed3a90aea[m
+Author: Junghan-Seok <jhstone034679@gmail.com>
+Date:   Fri Jul 18 15:27:42 2025 +0900
+
+    로그인 로그아웃  시스템
+
+[33mcommit ae72d1ef49b3c4572d01dce5610a24c5529c0a42[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Thu Jul 17 17:58:07 2025 +0900
+
+    문구생성부터 이미지 생성까지의 프론트엔드
+
+[33mcommit 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Thu Jul 17 17:58:07 2025 +0900
+
+    문구생성부터 이미지 생성까지의 프론트엔드
+
+[33mcommit ba7bd76a37d10ed21c38056d549e8c8cd860fa54[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Mon Jul 7 16:11:38 2025 +0900
+
+    README.md
+
+[33mcommit 6bd383fc0563a90d401f33be12c90b9ae6cdb80c[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Sun Jul 6 21:54:25 2025 +0900
+
+    회원가입/로그인 시스템
+
+[33mcommit 1411d9af26adb86abb07ea617c095e636b31f6b8[m[33m ([m[1;32mJungHan[m[33m)[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Mon Jun 30 22:13:38 2025 +0900
+
+    PDF 리포트 생성
+
+[33mcommit e15ae2d891f933ccaec4a278ab223319ff382380[m[33m ([m[1;32mmain[m[33m)[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Fri May 16 18:57:24 2025 +0900
+
+    파일 수정
+
+[33mcommit a7f111099fc5727a4992ad56964c0c2e31a072ba[m
+Author: JungHan-Seok <jhstone034679@gmail.com>
+Date:   Fri May 16 00:50:13 2025 +0900
+
+    파일 수정
+
+[33mcommit f94c57b4ceec4de4a3e1748ca9ae59771a870a2a[m
+Author: JungHan Seok <jhstone034679@gmail.com>
+Date:   Fri May 16 00:13:29 2025 +0900
+
+    커밋 메시지
+
+[33mcommit ee09dc2c1b2b5c2f3c9979aa26c71a2f819d8e04[m
+Merge: 4e41dc83b 5504d4f91
+Author: minseojang <msj3767@gmail.com>
+Date:   Wed May 7 23:51:53 2025 +0900
+
+    Merge pull request #1 from henry726726/minseojang
+    
+    Minseojang
+
+[33mcommit 5504d4f9177d552930e7d8e879a9c57d6a7fa9df[m[33m ([m[1;32mminseojang[m[33m)[m
+Author: henry726726 <msj3767@gmail.com>
+Date:   Wed May 7 23:46:59 2025 +0900
+
+    readme 수정
+
+[33mcommit ce2404f0accde0574abda41cc65b22be96d909ef[m
+Author: henry726726 <msj3767@gmail.com>
+Date:   Wed May 7 19:23:14 2025 +0900
+
+    gpt연결
+
+[33mcommit e29002c3ebbafb6841e98039245f3e1e76494e93[m
+Author: henry726726 <msj3767@gmail.com>
+Date:   Wed May 7 19:22:27 2025 +0900
+
+    gpt연결
+
+[33mcommit 7af7310f98b6650473d36f45024038bd245ae271[m
+Author: henry726726 <msj3767@gmail.com>
+Date:   Wed May 7 19:22:05 2025 +0900
+
+    gpt연결
+
+[33mcommit 9afaaef4bb910ec7aff590ba1e756b148b4a972b[m
+Author: henry726726 <msj3767@gmail.com>
+Date:   Wed May 7 19:17:55 2025 +0900
+
+    gpt연결
+
+[33mcommit 4e41dc83b501ec9c587b4ae63768ef684d43e221[m
+Author: henry726726 <msj3767@gmail.com>
+Date:   Fri May 2 13:08:11 2025 +0900
+
+    Initial commit: React + Spring 설정
+
+[33mcommit 00e0b8857c13babd08413f83acd9df7345545f29[m
+Author: minseojang <msj3767@gmail.com>
+Date:   Fri May 2 13:01:36 2025 +0900
+
+    Initial commit
