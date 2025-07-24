@@ -1,18 +1,14 @@
-<<<<<<< HEAD
-/*package com.example.backend.controller;
-=======
-package com.example.backend.controller;
->>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f
+package com.example.backend.controller; // ✅ 이 줄이 정상적으로 있어야 함.
 
 import com.example.backend.dto.TextGenerationRequest;
 import com.example.backend.dto.TextGenerationResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException; // ✅ HttpClientErrorException 임포트 (이전에 추가했음)
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.JsonNode; // ✅ 추가: JsonNode 임포트
-import com.fasterxml.jackson.databind.ObjectMapper; // ✅ 추가: ObjectMapper 임포트
 
 import java.util.Collections;
 import java.util.List;
@@ -28,7 +24,7 @@ public class TextGenerationController {
     private String openaiApiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper(); // ✅ 추가: ObjectMapper 인스턴스 생성
+    private final ObjectMapper objectMapper = new ObjectMapper(); // ✅ ObjectMapper 인스턴스 생성
 
     @PostMapping("/generate")
     public ResponseEntity<TextGenerationResponse> generateAdText(@RequestBody TextGenerationRequest request) {
@@ -84,16 +80,22 @@ public class TextGenerationController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                      .body(new TextGenerationResponse(Collections.singletonList("문구 생성 중 오류 발생 (OpenAI API 응답 실패)")));
             }
-        } catch (Exception e) {
-            System.err.println("OpenAI API 호출 중 예외 발생: " + e.getMessage());
+        // ✅ 이 catch 블록은 수정했던 그대로입니다.
+        } catch (HttpClientErrorException.Unauthorized e) { // 401 Unauthorized를 직접 캐치
+            System.err.println("OpenAI API 호출 중 예외 발생: 401 Unauthorized - API 키 오류 예상");
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED) // 클라이언트(Postman)에게 401을 돌려줌
+                                 .body(new TextGenerationResponse(Collections.singletonList("OpenAI API 키가 유효하지 않습니다. 확인해주세요.")));
+        } catch (HttpClientErrorException e) { // 다른 HttpClientErrorException (4xx 에러)
+            System.err.println("OpenAI API 호출 중 클라이언트 에러 발생: " + e.getStatusCode() + " - " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(e.getStatusCode()) // 받은 상태 코드를 그대로 돌려줌
+                                 .body(new TextGenerationResponse(Collections.singletonList("OpenAI API 호출 중 오류 발생: " + e.getStatusCode())));
+        } catch (Exception e) { // 기타 모든 예외
+            System.err.println("OpenAI API 호출 중 예상치 못한 예외 발생: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body(new TextGenerationResponse(Collections.singletonList("문구 생성 중 예외 발생: " + e.getMessage())));
+                                 .body(new TextGenerationResponse(Collections.singletonList("문구 생성 중 예상치 못한 오류 발생: " + e.getMessage())));
         }
     }
-<<<<<<< HEAD
 }
-*/
-=======
-}
->>>>>>> 3d709e8b3c17f5ff9d2a5fa22988b5978c30930f

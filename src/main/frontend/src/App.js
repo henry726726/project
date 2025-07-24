@@ -12,6 +12,9 @@ function App() {
   const [isAdModalOpen, setIsAdModalOpen] = useState(false);
   const [selectedAdText, setSelectedAdText] = useState(''); // 선택된 광고 문구를 저장할 상태
 
+  // ✅ 추가: TextGenerator의 입력 파라미터를 저장할 상태
+  const [textGenParams, setTextGenParams] = useState(null); // { product: '...', target: '...', ... } 형태
+
   useEffect(() => {
     let timer;
     if (isAdModalOpen) {
@@ -23,11 +26,11 @@ function App() {
   }, [isAdModalOpen]);
 
   // TextGenerator에서 문구가 선택되었을 때 호출될 함수
-  const handleAdTextSelect = (text) => {
+  // ✅ 수정: 선택된 텍스트와 함께, 텍스트 생성에 사용된 전체 파라미터도 받도록 수정
+  const handleAdTextSelect = (text, params) => {
     setSelectedAdText(text); // 선택된 문구 저장
+    setTextGenParams(params); // ✅ 파라미터 저장
     setActiveComponent('image'); // 이미지 생성 컴포넌트로 전환
-    // ⭐ 참고: PromptForm에 있던 서버 저장 로직을 여기서 처리할 수도 있습니다.
-    // 예를 들어, axios.post('http://localhost:8080/userdatainput/content', { ... });
   };
 
   return (
@@ -100,8 +103,10 @@ function App() {
       </div>
 
       {/* 컴포넌트 렌더링 */}
-      {activeComponent === 'text' && <TextGenerator onTextSelect={handleAdTextSelect} />} {/* onTextSelect prop 전달 */}
-      {activeComponent === 'image' && <ImageGenerator selectedText={selectedAdText} />} {/* selectedText prop 전달 */}
+      {/* ✅ 수정: TextGenerator에 onTextSelect prop 전달 */}
+      {activeComponent === 'text' && <TextGenerator onTextSelect={handleAdTextSelect} />}
+      {/* ✅ 수정: ImageGenerator에 textGenParams prop 전달 */}
+      {activeComponent === 'image' && <ImageGenerator selectedText={selectedAdText} textGenParams={textGenParams} />}
       {activeComponent === 'facebook' && <FacebookInput />}
       {activeComponent === 'metaAds' && <MetaAdManager />}
 
@@ -116,11 +121,14 @@ const getButtonStyle = (isActive, activeColor) => ({
   color: isActive ? 'white' : '#495057',
   border: 'none',
   borderRadius: '8px',
-  cursor: 'pointer',
+  fontSize: '15px', // 폰트 크기 조정
   fontWeight: 'bold',
-  transition: 'background-color 0.3s ease, color 0.3s ease, transform 0.1s ease',
+  cursor: 'pointer',
   boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
   whiteSpace: 'nowrap',
+  transition: 'background-color 0.3s ease, color 0.3s ease, transform 0.1s ease',
+  height: '50px' // 버튼 높이 조정
 });
+
 
 export default App;

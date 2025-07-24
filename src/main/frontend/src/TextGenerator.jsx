@@ -1,3 +1,5 @@
+// src/TextGenerator.jsx
+
 import React, { useState } from 'react';
 import axios from 'axios';
 
@@ -31,6 +33,7 @@ function TextGenerator({ onTextSelect }) {
 
     try {
       const res = await axios.post('http://localhost:8080/api/generate', form);
+      // OpenAI API 응답에서 생성된 텍스트 목록을 받아옵니다.
       setAdTexts(res.data.adTexts || []);
     } catch (err) {
       console.error('❌ 광고 문구 생성 오류:', err);
@@ -40,9 +43,10 @@ function TextGenerator({ onTextSelect }) {
     }
   };
 
+  // ✅ 수정: 선택된 텍스트와 함께, 현재 form 데이터를 onTextSelect 콜백으로 전달
   const handleSelectText = (selectedText) => {
     if (onTextSelect) {
-      onTextSelect(selectedText);
+      onTextSelect(selectedText, form); // 선택된 텍스트와 함께 현재 form 값도 전달
     }
   };
 
@@ -110,5 +114,6 @@ const adTextButtonStyle = {
   cursor: 'pointer',
   boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
 };
+
 
 export default TextGenerator;

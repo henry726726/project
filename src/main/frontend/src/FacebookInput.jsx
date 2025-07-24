@@ -1,14 +1,21 @@
+// src/FacebookInput.jsx
+
 import React, { useState } from 'react';
+import axios from 'axios';
 
 function FacebookInput() {
   // 광고 설정 값들을 저장할 상태
   const [adSettings, setAdSettings] = useState({
-    billingEvent: 'IMPRESSIONS', // 기본값 설정
-    optimizationGoal: 'LINK_CLICKS', // 기본값 설정
-    bidStrategy: 'LOWEST_COST_WITHOUT_CAP', // 기본값 설정
-    dailyBudget: '', // 초기에는 비워둠 (숫자 입력)
-    startTime: '', // 초기에는 비워둠 (날짜/시간 입력)
+    billingEvent: 'IMPRESSIONS',
+    optimizationGoal: 'LINK_CLICKS',
+    bidStrategy: 'LOWEST_COST_WITHOUT_CAP',
+    dailyBudget: '',
+    startTime: '',
   });
+
+  const [isSaving, setIsSaving] = useState(false); // 저장 중 상태
+  // ✅ 추가: 광고가 한 번이라도 성공적으로 생성(업로드)되었는지 추적하는 상태
+  const [adCreatedOrUpdated, setAdCreatedOrUpdated] = useState(false);
 
   // 입력 필드 값이 변경될 때 상태를 업데이트하는 함수
   const handleChange = (e) => {
@@ -17,17 +24,51 @@ function FacebookInput() {
       ...prevSettings,
       [name]: value,
     }));
+    // 입력값이 변경되면, "생성/업데이트" 상태를 초기화하여 다시 "생성하기" 버튼으로 돌아가게 할 수도 있습니다.
+    // 여기서는 유지하되, 필요에 따라 setAdCreatedOrUpdated(false); 추가 고려
   };
 
-  // '설정 저장' 버튼을 클릭했을 때 실행될 함수
-  const handleSaveSettings = () => {
-    // 여기에 실제 백엔드 서버로 데이터를 전송하는 로직이 들어갈 거예요.
-    // 예를 들어, axios.post('/api/meta/ad-settings', adSettings);
-    console.log('저장할 광고 설정:', adSettings);
-    alert('광고 설정이 저장되었습니다! 🎉');
+  // '광고 생성하기' 또는 '업로드하기' 버튼을 클릭했을 때 실행될 함수
+  const handleCreateAd = async () => {
+    if (!adSettings.dailyBudget || !adSettings.startTime) {
+      alert('하루 예산과 광고 시작 시간은 필수로 입력해야 합니다! 😅');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // ✅ 백엔드 API로 설정값 전송 로직
+      const response = await axios.post('http://localhost:8080/api/meta/create-ad', adSettings);
+
+      console.log('광고 캠페인 생성/업데이트 응답:', response.data);
+      alert('광고 캠페인이 성공적으로 생성/업데이트되었습니다! 🎉');
+
+      // ✅ 성공 시: 광고가 생성되었음을 나타내는 상태 업데이트
+      setAdCreatedOrUpdated(true);
+
+      // 성공 후 입력 필드 초기화 (선택 사항) - 일반적으로 업데이트 버튼으로 변경되면 초기화 안함
+      // setAdSettings({ ... });
+
+    } catch (error) {
+      console.error('광고 캠페인 생성/업데이트 중 오류 발생:', error);
+      const errorMessage = error.response && error.response.data && error.response.data.message
+                           ? error.response.data.message
+                           : '광고 캠페인 생성/업데이트 중 예상치 못한 오류가 발생했습니다.';
+      alert(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // 현재 설정 미리보기를 위한 컴포넌트 내부 스타일
+  // '광고 생성하기' 버튼 표시 조건: dailyBudget과 startTime이 모두 채워졌을 때
+  const canShowCreateAdButton = adSettings.dailyBudget && adSettings.startTime;
+
+  // ✅ 버튼 텍스트 결정: adCreatedOrUpdated 상태에 따라 달라짐
+  const buttonText = adCreatedOrUpdated ? '광고 업로드하기' : '광고 생성하기';
+
+
+  // 스타일 정의 (이전과 동일)
   const tdStyle = {
     border: '1px solid #ccc',
     padding: '8px',
@@ -44,6 +85,21 @@ function FacebookInput() {
     color: '#333',
     width: '40%'
   };
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '5px',
+    fontWeight: 'bold',
+    color: '#444',
+    fontSize: '0.95em'
+  };
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    border: '1px solid #ccc',
+    borderRadius: '5px',
+    fontSize: '1em',
+    boxSizing: 'border-box'
+  };
 
   return (
     <div style={{
@@ -59,6 +115,9 @@ function FacebookInput() {
       <h2 style={{ color: '#333', textAlign: 'center', marginBottom: '30px' }}>📊 페이스북 광고 설정</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        {/* 광고 설정 입력 필드들은 이전과 동일 */}
+        {/* ... (과금 기준, 최적화 목표, 입찰 방식, 하루 예산, 광고 시작 시간 필드) ... */}
+
         {/* 과금 기준 (billingEvent) */}
         <div>
           <label style={labelStyle}>과금 기준 (Billing Event):</label>
@@ -70,7 +129,6 @@ function FacebookInput() {
           >
             <option value="IMPRESSIONS">노출 (IMPRESSIONS)</option>
             <option value="LINK_CLICKS">링크 클릭 (LINK_CLICKS)</option>
-            {/* 추가 옵션은 Meta API 문서 참고 */}
           </select>
         </div>
 
@@ -86,7 +144,6 @@ function FacebookInput() {
             <option value="LINK_CLICKS">링크 클릭 (LINK_CLICKS)</option>
             <option value="REACH">도달 (REACH)</option>
             <option value="CONVERSIONS">전환 (CONVERSIONS)</option>
-            {/* 추가 옵션은 Meta API 문서 참고 */}
           </select>
         </div>
 
@@ -101,7 +158,6 @@ function FacebookInput() {
           >
             <option value="LOWEST_COST_WITHOUT_CAP">최저 비용 (LOWEST_COST_WITHOUT_CAP)</option>
             <option value="COST_CAP">비용 상한 (COST_CAP)</option>
-            {/* 추가 옵션은 Meta API 문서 참고 */}
           </select>
         </div>
 
@@ -109,7 +165,7 @@ function FacebookInput() {
         <div>
           <label style={labelStyle}>하루 예산 (Daily Budget - 원):</label>
           <input
-            type="number" // 숫자만 입력 가능
+            type="number"
             name="dailyBudget"
             value={adSettings.dailyBudget}
             onChange={handleChange}
@@ -122,7 +178,7 @@ function FacebookInput() {
         <div>
           <label style={labelStyle}>광고 시작 시간 (Start Time):</label>
           <input
-            type="datetime-local" // 날짜와 시간 선택 필드
+            type="datetime-local"
             name="startTime"
             value={adSettings.startTime}
             onChange={handleChange}
@@ -130,31 +186,35 @@ function FacebookInput() {
           />
         </div>
 
-        {/* 설정 저장 버튼 */}
-        <button
-          onClick={handleSaveSettings}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            marginTop: '20px',
-            backgroundColor: '#1877F2',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s ease',
-            boxShadow: '0 4px 8px rgba(24,119,242,0.2)'
-          }}
-          onMouseOver={e => e.currentTarget.style.backgroundColor = '#105fb2'}
-          onMouseOut={e => e.currentTarget.style.backgroundColor = '#1877F2'}
-        >
-          설정 저장하기
-        </button>
+
+        {/* ✅ 광고 생성/업로드하기 버튼: 조건부 렌더링 및 텍스트 변경 적용 */}
+        {canShowCreateAdButton && (
+          <button
+            onClick={handleCreateAd}
+            disabled={isSaving}
+            style={{
+              width: '100%',
+              padding: '12px 20px',
+              marginTop: '20px',
+              backgroundColor: isSaving ? '#cccccc' : '#1877F2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.2s ease',
+              boxShadow: '0 4px 8px rgba(24,119,242,0.2)'
+            }}
+            onMouseOver={e => !isSaving && (e.currentTarget.style.backgroundColor = '#105fb2')}
+            onMouseOut={e => !isSaving && (e.currentTarget.style.backgroundColor = '#1877F2')}
+          >
+            {isSaving ? '진행 중...' : buttonText}
+          </button>
+        )}
       </div>
 
-      {/* 현재 설정 미리보기 */}
+      {/* 현재 설정 미리보기는 이전과 동일 */}
       <div style={{ marginTop: '40px', padding: '15px', backgroundColor: '#eef3f9', borderRadius: '8px', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)' }}>
         <h3 style={{ color: '#444', marginBottom: '15px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>현재 설정 미리보기</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -185,23 +245,5 @@ function FacebookInput() {
     </div>
   );
 }
-
-// 공통 스타일 정의
-const labelStyle = {
-  display: 'block',
-  marginBottom: '5px',
-  fontWeight: 'bold',
-  color: '#444',
-  fontSize: '0.95em'
-};
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1px solid #ccc',
-  borderRadius: '5px',
-  fontSize: '1em',
-  boxSizing: 'border-box'
-};
 
 export default FacebookInput;
