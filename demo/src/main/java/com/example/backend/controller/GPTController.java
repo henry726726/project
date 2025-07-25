@@ -58,16 +58,41 @@ public class GPTController {
                 .build();
 
         try (Response response = client.newCall(gptRequest).execute()) {
-            String responseBody = response.body().string();
-            JsonNode root = mapper.readTree(responseBody);
-            String content = root.get("choices").get(0).get("message").get("content").asText();
+        String responseBody = response.body().string();
+        JsonNode root = mapper.readTree(responseBody);
 
-            List<String> adTexts = mapper.readValue(content, List.class);
-
-            System.out.println("✅ GPT 응답 문구들:");
-            adTexts.forEach(System.out::println);
-
-            return Map.of("adTexts", adTexts);
+        // 👉 응답 구조가 에러인지 먼저 확인
+        if (root.has("error")) {
+            String errorMessage = root.get("error").get("message").asText();
+            throw new RuntimeException("OpenAI API 오류: " + errorMessage);
         }
+
+        // 👉 안전하게 choices 추출
+        JsonNode choicesNode = root.get("choices");
+        if (choicesNode == null || !choicesNode.isArray() || choicesNode.isEmpty()) {
+            throw new RuntimeException("OpenAI 응답에 choices가 없습니다: " + responseBody);
+        }
+
+        JsonNode messageNode = choicesNode.get(0).get("message");
+        if (messageNode == null || messageNode.get("content") == null) {
+            throw new RuntimeException("OpenAI 응답에 content가 없습니다: " + responseBody);
+        }
+
+        String content = messageNode.get("content").asText();
+
+        // 👉 GPT가 문자열 배열 형식으로 응답 안 주는 경우 대비 (ex. 그냥 문자열로 응답하는 경우)
+        List<String> adTexts;
+        try {
+            adTexts = mapper.readValue(content, List.class);
+        } catch (Exception e) {
+            throw new RuntimeException("GPT 응답이 올바른 JSON 배열 형식이 아님:\n" + content);
+        }
+
+        System.out.println("✅ GPT 응답 문구들:");
+        adTexts.forEach(System.out::println);
+
+        return Map.of("adTexts", adTexts);
+        }
+
     }
 }
