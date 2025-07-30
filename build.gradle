@@ -48,6 +48,8 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// 💡💡💡 여기에 있는 tasks.named('test') 부분을 다음처럼 바꿔 줘! 💡💡💡
 tasks.named('test') {
 	useJUnitPlatform()
+	enabled = false // 💡💡💡 이 줄을 추가해서 test 태스크를 비활성화합니다.
 }

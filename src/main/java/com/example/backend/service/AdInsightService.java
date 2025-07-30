@@ -1,7 +1,10 @@
+// AdInsightService.java (다시 한번 정확한 수정본)
 package com.example.backend.service;
 
 import com.example.backend.entity.AdInsight;
+import com.example.backend.entity.Ad; // 💡 Ad 엔티티 임포트
 import com.example.backend.repository.AdInsightRepository;
+import com.example.backend.repository.AdRepository; // 💡 AdRepository 임포트
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +20,14 @@ public class AdInsightService {
     @Autowired
     private AdInsightRepository insightRepository;
 
-    public void fetchAndStoreInsights(String adId, String accessToken) {
-        // ✅ age, gender는 fields가 아니라 breakdowns로 요청해야 함
+    @Autowired // 💡 AdRepository 주입
+    private AdRepository adRepository;
+
+    // 💡 매개변수명 변경: adId -> adIdFromParam (혼동 방지)
+    public void fetchAndStoreInsights(String adIdFromParam, String accessToken) {
         String url = String.format(
                 "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency&access_token=%s",
-                adId, accessToken);
+                adIdFromParam, accessToken);
 
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -36,9 +42,14 @@ public class AdInsightService {
                 return;
             }
 
+            // 💡 adIdFromParam에 해당하는 Ad 엔티티를 미리 조회
+            Ad ad = adRepository.findById(adIdFromParam) // AdRepository의 findById가 String ID를 받도록 되어있었음
+                    .orElseThrow(() -> new RuntimeException("Ad not found with ID: " + adIdFromParam));
+
+
             for (JsonNode node : dataArray) {
                 AdInsight insight = new AdInsight();
-                insight.setAdId(adId);
+                insight.setAd(ad); // 💡 수정: setAdId(String) 대신 setAd(Ad) 사용
 
                 // 안전하게 값 추출
                 String age = node.path("age").isMissingNode() ? null : node.path("age").asText();

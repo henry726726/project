@@ -3,15 +3,25 @@ package com.example.backend.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Getter; // Lombok 추가
+import lombok.Setter; // Lombok 추가
+import lombok.NoArgsConstructor; // Lombok 추가
 
 @Entity
+@Getter // Lombok Getters
+@Setter // Lombok Setters
+@NoArgsConstructor // Lombok 기본 생성자
 public class AdInsight {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String adId;
+    // 💡 기존 private String adId; 필드 대신 Ad 엔티티와의 ManyToOne 관계 추가
+    @ManyToOne(fetch = FetchType.LAZY) // 여러 AdInsight가 하나의 Ad에 속함
+    @JoinColumn(name = "ad_id") // AdInsight 테이블에 ad_id 외래키 컬럼 생성
+    private Ad ad; // Ad 엔티티 자체를 참조
+
     private String age;
     private String gender;
 
@@ -25,101 +35,6 @@ public class AdInsight {
 
     private LocalDate date;
 
-    // Getters and Setters
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getAdId() {
-        return adId;
-    }
-
-    public void setAdId(String adId) {
-        this.adId = adId;
-    }
-
-    public String getAge() {
-        return age;
-    }
-
-    public void setAge(String age) {
-        this.age = age;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    public int getImpressions() {
-        return impressions;
-    }
-
-    public void setImpressions(int impressions) {
-        this.impressions = impressions;
-    }
-
-    public int getClicks() {
-        return clicks;
-    }
-
-    public void setClicks(int clicks) {
-        this.clicks = clicks;
-    }
-
-    public BigDecimal getSpend() {
-        return spend;
-    }
-
-    public void setSpend(BigDecimal spend) {
-        this.spend = spend;
-    }
-
-    public int getReach() {
-        return reach;
-    }
-
-    public void setReach(int reach) {
-        this.reach = reach;
-    }
-
-    public BigDecimal getCpc() {
-        return cpc;
-    }
-
-    public void setCpc(BigDecimal cpc) {
-        this.cpc = cpc;
-    }
-
-    public BigDecimal getCtr() {
-        return ctr;
-    }
-
-    public void setCtr(BigDecimal ctr) {
-        this.ctr = ctr;
-    }
-
-    public BigDecimal getFrequency() {
-        return frequency;
-    }
-
-    public void setFrequency(BigDecimal frequency) {
-        this.frequency = frequency;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
+    // Lombok으로 게터/세터 및 생성자를 대체했습니다.
+    // 기존 수동 작성된 게터/세터는 @Getter/@Setter 어노테이션으로 대체됩니다.
 }

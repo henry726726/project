@@ -1,251 +1,154 @@
-import React, { useState, useEffect, useRef } from 'react'
-import './MyPage.css'
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import user_icon from '../Assets/person.png'
-import email_icon from '../Assets/email.png'
-import edit_icon from '../Assets/password.png' // Using password icon as edit icon for now
+// 💡💡💡 최종 수정: logo.svg 경로 정확히 지정!
+// MyPage.jsx는 'src/components/MyPage'에 있고, logo.svg는 'src'에 있으므로
+// 'src/components/MyPage' -> 'src/components' (..) -> 'src' (..) -> logo.svg
+import profile_icon from '../../logo.svg'; // 💡💡💡 '../../logo.svg'로 두 단계 위로 이동합니다.
 
-const AUTO_LOGOUT_MINUTES = 90;
-const AUTO_LOGOUT_MS = AUTO_LOGOUT_MINUTES * 60 * 1000;
+function MyPage({ userData, onLogout }) {
+    const navigate = useNavigate();
+    const [editMode, setEditMode] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [nickname, setNickname] = useState(userData ? userData.nickname : '');
+    const [nicknameError, setNicknameError] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
-const MyPage = ({ userData, onLogout }) => {
-    const [userInfo, setUserInfo] = useState(userData || {
-        nickname: 'User',
-        email: 'user@example.com'
-    });
-
-    const [isEditing, setIsEditing] = useState(false);
-    const [editInfo, setEditInfo] = useState(userInfo);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [remaining, setRemaining] = useState(AUTO_LOGOUT_MS);
-    const timerRef = useRef();
-    const lastActivityRef = useRef(Date.now());
-
-    // Reset timer on user activity
-    useEffect(() => {
-        const resetTimer = () => {
-            lastActivityRef.current = Date.now();
-            setRemaining(AUTO_LOGOUT_MS);
-        };
-        const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
-        events.forEach(event => window.addEventListener(event, resetTimer));
-        return () => {
-            events.forEach(event => window.removeEventListener(event, resetTimer));
-        };
-    }, []);
-
-    // Countdown timer
-    useEffect(() => {
-        timerRef.current = setInterval(() => {
-            const elapsed = Date.now() - lastActivityRef.current;
-            const timeLeft = AUTO_LOGOUT_MS - elapsed;
-            setRemaining(timeLeft);
-            if (timeLeft <= 0) {
-                clearInterval(timerRef.current);
-                handleAutoLogout();
-            }
-        }, 1000);
-        return () => clearInterval(timerRef.current);
-    }, []);
-
-    const handleAutoLogout = async () => {
-        try {
-            const apiUrl = process.env.REACT_APP_API_URL;
-            await fetch(`${apiUrl}/api/logout`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-        } catch (error) {
-            // ignore
+    const handleAutoLogout = useCallback(() => {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) {
+            alert('세션이 만료되어 자동으로 로그아웃됩니다.');
+            onLogout();
+            navigate('/auth/login');
+            return;
         }
-        onLogout();
-        alert('You have been logged out due to inactivity.');
-        window.location.reload();
-    };
+    }, [onLogout, navigate]);
 
-    const handleEdit = () => {
-        setIsEditing(true);
-        setEditInfo(userInfo);
-        setError('');
-    };
+    useEffect(() => {
+        const timerId = setTimeout(handleAutoLogout, 1 * 60 * 1000); // 1분 후 자동 로그아웃
+        return () => {
+            clearTimeout(timerId);
+        };
+    }, [handleAutoLogout]);
 
-    const handleSave = async () => {
-        setLoading(true);
-        setError('');
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        setPasswordError('');
 
+        if (newPassword !== confirmPassword) {
+            setPasswordError("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError("새 비밀번호는 6자 이상이어야 합니다.");
+            return;
+        }
+
+        setIsSaving(true);
         try {
-            const apiUrl = process.env.REACT_APP_API_URL;
-            const response = await fetch(`${apiUrl}/api/profile`, {
-                method: 'PUT',
+            const token = localStorage.getItem('jwtToken');
+            await fetch('/api/user/password-change', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
-                credentials: 'include',
-                body: JSON.stringify({
-                    nickname: editInfo.nickname,
-                    email: editInfo.email,
-                    bio: editInfo.bio
-                })
+                body: JSON.stringify({ currentPassword, newPassword })
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Something went wrong');
-            }
-
-            setUserInfo(editInfo);
-            setIsEditing(false);
+            alert('비밀번호가 성공적으로 변경되었습니다.');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setEditMode(false);
         } catch (error) {
-            setError(error.message);
+            console.error('비밀번호 변경 오류:', error);
+            setPasswordError('비밀번호 변경 중 오류가 발생했습니다.');
         } finally {
-            setLoading(false);
+            setIsSaving(false);
         }
     };
 
-    const handleCancel = () => {
-        setIsEditing(false);
-        setEditInfo(userInfo);
-        setError('');
-    };
+    const handleNicknameChange = async (e) => {
+        e.preventDefault();
+        setNicknameError('');
+        if (!nickname.trim()) {
+            setNicknameError("닉네임을 입력해주세요.");
+            return;
+        }
 
-    const handleInputChange = (field, value) => {
-        setEditInfo(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    const handleLogout = async () => {
+        setIsSaving(true);
         try {
-            const apiUrl = process.env.REACT_APP_API_URL;
-            await fetch(`${apiUrl}/api/logout`, {
+            const token = localStorage.getItem('jwtToken');
+            await fetch('/api/user/nickname-change', {
                 method: 'POST',
-                credentials: 'include'
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ nickname })
             });
-            onLogout();
-            window.location.reload(); // Force redirect to login page after logout
+            alert('닉네임이 성공적으로 변경되었습니다.');
+            setEditMode(false);
         } catch (error) {
-            console.error('Logout error:', error);
-            onLogout();
-            window.location.reload();
+            console.error('닉네임 변경 오류:', error);
+            setNicknameError('닉네임 변경 중 오류가 발생했습니다.');
+        } finally {
+            setIsSaving(false);
         }
     };
+
+    const handleLogoutClick = () => {
+        onLogout();
+        localStorage.removeItem('jwtToken');
+        alert('성공적으로 로그아웃되었습니다.');
+        navigate('/auth/login');
+    };
+
+    if (!userData) {
+        return <div className="mypage-container">사용자 정보를 불러오는 중...</div>;
+    }
 
     return (
-        <div className='mypage-container'>
-            <div className="mypage-header">
-                <div className="mypage-title">My Profile</div>
-                <div className="mypage-underline"></div>
-                <div style={{marginTop: 10, color: '#2C5530', fontWeight: 600, fontSize: 16}}>
-                    Auto logout in: {Math.max(0, Math.floor(remaining / 60000))}m {Math.max(0, Math.floor((remaining % 60000) / 1000))}s
-                </div>
-            </div>
-            
-            {error && (
-                <div className="error-message" style={{
-                    color: '#ff6b6b',
-                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                    padding: '10px',
-                    borderRadius: '8px',
-                    marginBottom: '20px',
-                    fontSize: '14px',
-                    textAlign: 'center'
-                }}>
-                    {error}
-                </div>
-            )}
-            
+        <div className="mypage-container">
+            <h2 className="mypage-header">내 정보</h2>
             <div className="profile-section">
-                <div className="profile-avatar">
-                    <img src={user_icon} alt="Profile" />
-                </div>
-                
-                <div className="profile-info">
-                    {!isEditing ? (
-                        <div className="info-display">
-                            <div className="info-item">
-                                <img src={user_icon} alt="" />
-                                <span className="label">Nickname:</span>
-                                <span className="value">{userInfo.nickname}</span>
-                            </div>
-                            <div className="info-item">
-                                <img src={email_icon} alt="" />
-                                <span className="label">Email:</span>
-                                <span className="value">{userInfo.email}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Member Since:</span>
-                                <span className="value">{userInfo.joinDate}</span>
-                            </div>
-                            <div className="bio-item">
-                                <span className="label">Bio:</span>
-                                <span className="value">{userInfo.bio}</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="info-edit">
-                            <div className="edit-item">
-                                <img src={user_icon} alt="" />
-                                <input 
-                                    type="text" 
-                                    value={editInfo.nickname}
-                                    onChange={(e) => handleInputChange('nickname', e.target.value)}
-                                    placeholder="Nickname"
-                                    disabled={loading}
-                                />
-                            </div>
-                            <div className="edit-item">
-                                <img src={email_icon} alt="" />
-                                <input 
-                                    type="email" 
-                                    value={editInfo.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    placeholder="Email"
-                                    disabled={loading}
-                                />
-                            </div>
-                            <div className="edit-item">
-                                <textarea 
-                                    value={editInfo.bio}
-                                    onChange={(e) => handleInputChange('bio', e.target.value)}
-                                    placeholder="Bio"
-                                    rows="3"
-                                    disabled={loading}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <img src={profile_icon} alt="Profile Icon" className="profile-icon" />
+                <p className="user-email">{userData.email}</p>
+                <p className="user-nickname">{nickname}</p>
             </div>
 
-            <div className="action-buttons">
-                {!isEditing ? (
-                    <div className="button-group">
-                        <div className="action-btn edit-btn" onClick={handleEdit}>
-                            Edit Profile
-                        </div>
-                        <div className="action-btn logout-btn" onClick={handleLogout}>
-                            Logout
-                        </div>
-                    </div>
-                ) : (
-                    <div className="button-group">
-                        <div className="action-btn save-btn" 
-                            onClick={handleSave}
-                            style={{ opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
-                        >
-                            {loading ? 'Saving...' : 'Save Changes'}
-                        </div>
-                        <div className="action-btn cancel-btn" onClick={handleCancel}>
-                            Cancel
-                        </div>
+            <div className="edit-section">
+                <button className="edit-btn" onClick={() => setEditMode(!editMode)}>
+                    {editMode ? '편집 모드 종료' : '정보 수정'}
+                </button>
+
+                {editMode && (
+                    <div className="edit-forms">
+                        <h3>비밀번호 변경</h3>
+                        <form onSubmit={handlePasswordChange}>
+                            <input type="password" placeholder="현재 비밀번호" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                            <input type="password" placeholder="새 비밀번호 (6자 이상)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                            <input type="password" placeholder="새 비밀번호 확인" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                            {passwordError && <p className="error-message">{passwordError}</p>}
+                            <button type="submit" disabled={isSaving}>비밀번호 변경 {isSaving && '중...'}</button>
+                        </form>
+
+                        <h3>닉네임 변경</h3>
+                        <form onSubmit={handleNicknameChange}>
+                            <input type="text" placeholder="새 닉네임" value={nickname} onChange={(e) => setNickname(e.target.value)} required />
+                            {nicknameError && <p className="error-message">{nicknameError}</p>}
+                            <button type="submit" disabled={isSaving}>닉네임 변경 {isSaving && '중...'}</button>
+                        </form>
                     </div>
                 )}
             </div>
+            
+            <button className="logout-button" onClick={handleLogoutClick}>로그아웃</button>
         </div>
     );
-};
+}
 
-export default MyPage 
+export default MyPage;

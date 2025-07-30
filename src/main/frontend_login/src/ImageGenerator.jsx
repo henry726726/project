@@ -1,5 +1,3 @@
-// src/ImageGenerator.jsx
-
 import React, { useState } from 'react';
 import axios from 'axios';
 
@@ -9,7 +7,13 @@ function ImageGenerator({ selectedText, textGenParams }) {
   const [resultUrl, setResultUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingContent, setIsSavingContent] = useState(false); // ✅ 추가: DB 저장 중 상태
+
+  // 💡 ESLint 경고 해결: 'setMode'가 사용되지 않아서 발생하는 경고.
+  //    현재 코드에서는 'mode'를 하드코딩된 'controlnet'으로 사용하므로, setMode는 필요 없습니다.
+  //    따라서 setMode를 제거하고 mode만 선언하거나, 아래처럼 ESLint 무시 주석을 추가합니다.
+  // eslint-disable-next-line no-unused-vars
   const [mode, setMode] = useState('controlnet'); // 합성 방식 선택용 (필요하면)
+                                                // 현재는 'controlnet'으로 고정
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
@@ -39,9 +43,9 @@ function ImageGenerator({ selectedText, textGenParams }) {
       const form = new FormData();
       form.append('image', imageFile);
       form.append('prompt', selectedText);
-      form.append('mode', mode);
+      form.append('mode', mode); // 현재 mode는 'controlnet'으로 고정
 
-      const url = 'http://localhost:8000/generate'; // 파이썬 이미지 서버 URL
+      const url = 'http://localhost:8000/generate'; // 파이썬 이미지 서버 URL (확인 필요)
 
       const res = await axios.post(url, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -71,6 +75,14 @@ function ImageGenerator({ selectedText, textGenParams }) {
 
     setIsSavingContent(true);
 
+    // 💡💡💡 JWT 토큰을 localStorage에서 가져옵니다! 💡💡💡
+    const token = localStorage.getItem('jwtToken'); 
+    if (!token) {
+      alert('로그인이 필요합니다. 다시 로그인해주세요!'); // 토큰 없으면 알림
+      setIsSavingContent(false);
+      return;
+    }
+
     try {
       // 이미지 Base64 데이터에서 'data:image/png;base64,' 접두사 제거
       const cleanedBase64Image = resultUrl.split(',')[1];
@@ -88,24 +100,28 @@ function ImageGenerator({ selectedText, textGenParams }) {
         generatedImageBase64: cleanedBase64Image,
       };
 
-      // ✅ 백엔드 저장 API 호출
-      // 이 엔드포인트는 다음 단계에서 백엔드에 구현할 예정입니다.
-      const response = await axios.post('http://localhost:8080/api/ad-content/save', savePayload);
+      // 💡💡💡 axios.post 요청에 headers 객체를 추가하고 Authorization 헤더를 포함합니다! 💡💡💡
+      const response = await axios.post('http://localhost:8080/api/ad-content/save', savePayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // JWT 토큰을 'Bearer ' 스키마로 추가
+        }
+      });
 
       console.log('광고 콘텐츠 저장 응답:', response.data);
       alert('광고 콘텐츠가 성공적으로 저장되었습니다! ✅');
 
     } catch (error) {
       console.error('광고 콘텐츠 저장 중 오류 발생:', error);
-      const errorMessage = error.response && error.response.data && error.response.data.message
-                           ? error.response.data.message
-                           : '광고 콘텐츠 저장 중 예상치 못한 오류가 발생했습니다. 😥';
+      // 💡💡💡 에러 메시지 개선: 401 Unauthorized 에러 처리 추가 💡💡💡
+      const errorMessage = error.response && error.response.status === 401
+                           ? '인증이 필요하거나 세션이 만료되었습니다. 다시 로그인해주세요.'
+                           : error.response?.data?.message || error.message || '광고 콘텐츠 저장 중 예상치 못한 오류가 발생했습니다. 😥';
       alert(errorMessage);
     } finally {
       setIsSavingContent(false);
     }
   };
-
 
   return (
     <div style={{ maxWidth: 600, margin: '40px auto', padding: 20, border: '1px solid #ddd', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', backgroundColor: 'rgba(255, 255, 255, 0.9)', fontFamily: 'Arial, sans-serif', textAlign: 'center' }}>
@@ -125,30 +141,24 @@ function ImageGenerator({ selectedText, textGenParams }) {
 
       <button onClick={handleCompose} disabled={isLoading || !selectedText} style={{
         width: '100%', padding: 12, backgroundColor: (isLoading || !selectedText) ? '#999' : '#007bff',
-        color: 'white', border: 'none', borderRadius: 6, fontSize: 16,
-        cursor: (isLoading || !selectedText) ? 'not-allowed' : 'pointer', marginBottom: 20
+        color: 'white', border: 'none', borderRadius: 5, fontSize: '1.1em', cursor: 'pointer', marginBottom: 10,
+        opacity: (isLoading || !selectedText) ? 0.7 : 1
       }}>
-        {isLoading ? '합성 중...' : '이미지 합성하기'}
+        {isLoading ? '이미지 합성 중... ⏳' : '이미지 합성하기 🎨'}
       </button>
 
       {resultUrl && (
-        <div style={{ marginBottom: 20 }}>
-          <img src={resultUrl} alt="합성 결과" style={{ maxWidth: '100%', borderRadius: 8 }} />
-          <a href={resultUrl} download={`composite_${getTimestampString()}.png`} style={{ display: 'block', marginTop: 10, color: '#007bff', textDecoration: 'underline', cursor: 'pointer' }}>
-            이미지 다운로드
-          </a>
+        <div style={{ marginTop: 20, borderTop: '1px solid #eee', paddingTop: 20 }}>
+          <h3>합성된 이미지 👇</h3>
+          <img src={resultUrl} alt="Composite Ad" style={{ maxWidth: '100%', height: 'auto', borderRadius: 8, border: '1px solid #ddd' }} />
+          <button onClick={handleSaveContent} disabled={isSavingContent} style={{
+            width: '100%', padding: 12, marginTop: 15, backgroundColor: isSavingContent ? '#999' : '#28a745',
+            color: 'white', border: 'none', borderRadius: 5, fontSize: '1.1em', cursor: 'pointer',
+            opacity: isSavingContent ? 0.7 : 1
+          }}>
+            {isSavingContent ? '콘텐츠 저장 중... 💾' : '광고 콘텐츠 저장 ✅'}
+          </button>
         </div>
-      )}
-
-      {/* ✅ 추가: 콘텐츠 저장 버튼 */}
-      {resultUrl && ( // 이미지가 생성되었을 때만 버튼 표시
-        <button onClick={handleSaveContent} disabled={isSavingContent} style={{
-          width: '100%', padding: 12, backgroundColor: isSavingContent ? '#ccc' : '#28a745',
-          color: 'white', border: 'none', borderRadius: 6, fontSize: 16,
-          cursor: isSavingContent ? 'not-allowed' : 'pointer'
-        }}>
-          {isSavingContent ? '저장 중...' : '생성된 광고 콘텐츠 저장하기 ✅'}
-        </button>
       )}
     </div>
   );

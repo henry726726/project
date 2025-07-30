@@ -1,156 +1,34 @@
+// src/main/java/com/example/backend/service/MetaAdCreatorService.java
 package com.example.backend.service;
 
-import com.example.backend.entity.AccessTokenEntity;
-import com.example.backend.entity.AdAccount;
-import com.example.backend.entity.Content;
-import com.example.backend.repository.AccessTokenRepository;
-import com.example.backend.repository.AdAccountRepository;
-import com.example.backend.repository.ContentRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
+import com.example.backend.dto.AdAccountDto; // 💡 AdAccountDto 임포트
+import com.example.backend.entity.User;
+import com.example.backend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.Optional; // Optional 임포트가 없었다면 추가
 
 @Service
-public class MetaAdCreatorService {
+@RequiredArgsConstructor
+public class MetaAdCreatorService { // 💡 클래스명: MetaAdCreatorService
 
-    @Autowired
-    private AccessTokenRepository accessTokenRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private AdAccountRepository adAccountRepository;
+    @Transactional
+    public void saveAdAccount(String userEmail, AdAccountDto adAccountDto) { // 💡 AdAccountDto 사용
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found for email: " + userEmail));
 
-    @Autowired
-    private ContentRepository contentRepository;
+        // ... 실제 Meta 광고 계정 생성/저장 로직 ...
+        System.out.println("Meta Ad Account created/updated for user: " + userEmail);
+        System.out.println("Account ID: " + adAccountDto.getAccountId());
+        System.out.println("Access Token: " + adAccountDto.getAccessToken());
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public void createInitialAdByContentId(String contentId) {
-        Content content = contentRepository.findById(contentId)
-                .orElseThrow(() -> new RuntimeException("콘텐츠 없음"));
-
-        String userId = content.getUserdatainput().getId();
-        String caption = content.getCaption();
-        String imageUrl = content.getImageUrl();
-
-        String accessToken = getAccessToken(userId);
-        String adAccountId = getAdAccountId();
-
-        String campaignId = createCampaign(adAccountId, accessToken);
-        String adSetId = createAdSet(adAccountId, campaignId, accessToken);
-        String creativeId = createAdCreative(adAccountId, accessToken, caption, imageUrl);
-
-        createAd(adAccountId, adSetId, creativeId, accessToken);
-    }
-
-    private String getAccessToken(String userId) {
-        return accessTokenRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("No access token for user: " + userId))
-                .getAccessToken();
-    }
-
-    private String getAdAccountId() {
-        String rawAccountId = adAccountRepository.findAll().stream()
-                .findFirst().orElseThrow(() -> new RuntimeException("No ad account found"))
-                .getAccountId();
-        return "act_" + rawAccountId;
-    }
-
-    private String createCampaign(String adAccountId, String accessToken) {
-        String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/campaigns";
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New Campaign2");
-        body.add("objective", "OUTCOME_TRAFFIC");
-        body.add("status", "PAUSED");
-        body.add("access_token", accessToken);
-        body.add("special_ad_categories", "[\"NONE\"]");
-
-        return postAndExtractId(url, body);
-    }
-
-    private String createAdSet(String adAccountId, String campaignId, String accessToken) {
-        String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/adsets";
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New AdSet_2");
-        body.add("campaign_id", campaignId);
-        body.add("billing_event", "IMPRESSIONS");
-        body.add("optimization_goal", "LINK_CLICKS");
-        body.add("bid_strategy", "LOWEST_COST_WITHOUT_CAP");
-        body.add("daily_budget", "140000");
-        body.add("start_time", String.valueOf(Instant.now().plus(1, ChronoUnit.MINUTES).getEpochSecond()));
-        body.add("targeting", getFacebookTargetingJson());
-        body.add("status", "PAUSED");
-        body.add("access_token", accessToken);
-
-        return postAndExtractId(url, body);
-    }
-
-    private String createAdCreative(String adAccountId, String accessToken, String caption, String imageUrl) {
-        String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/adcreatives";
-        String objectStorySpecJson = String.format(
-                "{\"page_id\":\"666307613232481\",\"link_data\":{\"message\":\"%s\",\"link\":\"%s\"}}",
-                caption, imageUrl);
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New Creative_2");
-        body.add("object_story_spec", objectStorySpecJson);
-        body.add("access_token", accessToken);
-
-        return postAndExtractId(url, body);
-    }
-
-    private void createAd(String adAccountId, String adSetId, String creativeId, String accessToken) {
-        String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/ads";
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("name", "New Ad_2");
-        body.add("adset_id", adSetId);
-        body.add("creative", String.format("{\"creative_id\":\"%s\"}", creativeId));
-        body.add("status", "PAUSED");
-        body.add("access_token", accessToken);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(url, new HttpEntity<>(body, getHeaders()),
-                String.class);
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Ad 생성 실패: " + response.getBody());
-        }
-    }
-
-    private String postAndExtractId(String url, MultiValueMap<String, String> body) {
-        ResponseEntity<String> response = restTemplate.postForEntity(url, new HttpEntity<>(body, getHeaders()),
-                String.class);
-        try {
-            JsonNode json = objectMapper.readTree(response.getBody());
-            return json.path("id").asText();
-        } catch (Exception e) {
-            throw new RuntimeException("ID 파싱 실패: " + response.getBody());
-        }
-    }
-
-    private HttpHeaders getHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        return headers;
-    }
-
-    private String getFacebookTargetingJson() {
-        Map<String, Object> targeting = new HashMap<>();
-        targeting.put("geo_locations", Collections.singletonMap("countries", Arrays.asList("KR")));
-        targeting.put("publisher_platforms", Arrays.asList("facebook"));
-        targeting.put("facebook_positions", Arrays.asList("feed", "right_hand_column"));
-
-        try {
-            return new ObjectMapper().writeValueAsString(targeting);
-        } catch (Exception e) {
-            throw new RuntimeException("타겟팅 JSON 생성 실패", e);
-        }
+        // (추가) User 엔티티에 AdAccount 정보를 직접 저장하는 필드를 추가하거나,
+        // 별도의 AdAccount 엔티티를 만들어 관리해야 합니다.
+        // 현재 이 서비스는 AccessTokenEntity만 다루고 있지 않습니다.
+        // 실제 광고 계정 정보를 저장하는 로직이 필요합니다.
     }
 }

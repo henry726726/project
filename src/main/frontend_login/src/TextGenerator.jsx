@@ -15,7 +15,7 @@ function TextGenerator({ onTextSelect }) {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm(prevForm => ({ ...prevForm, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
@@ -31,28 +31,57 @@ function TextGenerator({ onTextSelect }) {
       return;
     }
 
+    // 💡💡💡 JWT 토큰을 localStorage에서 가져옵니다! 💡💡💡
+    const token = localStorage.getItem('jwtToken'); 
+    if (!token) {
+      alert('로그인이 필요합니다. 다시 로그인해주세요!'); // 토큰 없으면 알림
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await axios.post('http://localhost:8080/api/generate', form);
+      // 💡💡💡 axios 요청에 headers 객체를 추가하고 Authorization 헤더를 포함합니다! 💡💡💡
+      const res = await axios.post('http://localhost:8080/api/generate', form, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // JWT 토큰을 'Bearer ' 스키마로 추가
+        }
+      });
       // OpenAI API 응답에서 생성된 텍스트 목록을 받아옵니다.
       setAdTexts(res.data.adTexts || []);
     } catch (err) {
       console.error('❌ 광고 문구 생성 오류:', err);
-      alert('광고 문구 생성 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.');
+      // 💡💡💡 에러 메시지 개선: 401 Unauthorized 에러 처리 추가 💡💡💡
+      const errorMessage = err.response && err.response.status === 401
+                         ? '인증이 필요하거나 세션이 만료되었습니다. 다시 로그인해주세요.'
+                         : err.response?.data?.message || err.message || '광고 문구 생성 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ 수정: 선택된 텍스트와 함께, 현재 form 데이터를 onTextSelect 콜백으로 전달
   const handleSelectText = (selectedText) => {
     if (onTextSelect) {
-      onTextSelect(selectedText, form); // 선택된 텍스트와 함께 현재 form 값도 전달
+      // 최신 form 상태를 안전하게 전달
+      onTextSelect(selectedText, { ...form });
     }
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: '40px auto', padding: 30, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 15, boxShadow: '0 8px 20px rgba(0,0,0,0.08)', fontFamily: 'Arial, sans-serif', color: '#343a40' }}>
-      <h2 style={{ color: '#495057', textAlign: 'center', marginBottom: 30, fontSize: '2em', fontWeight: 600 }}>✨ 광고 문구 생성기 ✨</h2>
+    <div style={{
+      maxWidth: 600,
+      margin: '40px auto',
+      padding: 30,
+      backgroundColor: 'rgba(255,255,255,0.9)',
+      borderRadius: 15,
+      boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+      fontFamily: 'Arial, sans-serif',
+      color: '#343a40'
+    }}>
+      <h2 style={{ color: '#495057', textAlign: 'center', marginBottom: 30, fontSize: '2em', fontWeight: 600 }}>
+        ✨ 광고 문구 생성기 ✨
+      </h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
         <input name="product" value={form.product} onChange={handleChange} placeholder="제품명 (예: 럭셔리 시계)" style={inputStyle} />
         <input name="target" value={form.target} onChange={handleChange} placeholder="타겟 (예: 30대 남성 직장인)" style={inputStyle} />
@@ -65,7 +94,9 @@ function TextGenerator({ onTextSelect }) {
       </form>
       {adTexts.length > 0 && (
         <div style={{ marginTop: 30 }}>
-          <h3 style={{ color: '#495057', marginBottom: 15, fontSize: '1.3em', fontWeight: 600 }}>👇 문구를 선택하세요:</h3>
+          <h3 style={{ color: '#495057', marginBottom: 15, fontSize: '1.3em', fontWeight: 600 }}>
+            👇 문구를 선택하세요:
+          </h3>
           {adTexts.map((text, idx) => (
             <button key={idx} onClick={() => handleSelectText(text)} style={adTextButtonStyle}>
               {text}
@@ -114,6 +145,5 @@ const adTextButtonStyle = {
   cursor: 'pointer',
   boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
 };
-
 
 export default TextGenerator;

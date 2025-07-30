@@ -4,8 +4,14 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter; // 💡 Lombok Getter 추가
+import lombok.Setter; // 💡 Lombok Setter 추가
+import lombok.NoArgsConstructor; // 💡 Lombok NoArgsConstructor 추가
 
 @Entity
+@Getter // Lombok이 Getters 생성
+@Setter // Lombok이 Setters 생성
+@NoArgsConstructor // Lombok이 기본 생성자 생성
 public class UserDataInput {
 
     @Id
@@ -24,10 +30,9 @@ public class UserDataInput {
     @OneToMany(mappedBy = "userdatainput", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Content> contents = new ArrayList<>();
 
-    // --- 생성자 ---
-    public UserDataInput() {
-    }
+    // 💡 Lombok이 NoArgsConstructor와 Getters/Setters를 제공하므로 아래는 불필요
 
+    // 생성자 (모든 필드 포함 생성자는 수동으로 유지하거나 Lombok @AllArgsConstructor 사용)
     public UserDataInput(String id, String name, String product, String target,
             String purpose, String keyword, String duration) {
         this.id = id;
@@ -37,82 +42,10 @@ public class UserDataInput {
         this.purpose = purpose;
         this.keyword = keyword;
         this.duration = duration;
-        this.createdAt = LocalDateTime.now();
+        // createdAt은 필드 초기화에서 LocalDateTime.now()로 이미 설정됨
     }
 
-    // --- Getters and Setters ---
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getProduct() {
-        return product;
-    }
-
-    public void setProduct(String product) {
-        this.product = product;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public void setTarget(String target) {
-        this.target = target;
-    }
-
-    public String getPurpose() {
-        return purpose;
-    }
-
-    public void setPurpose(String purpose) {
-        this.purpose = purpose;
-    }
-
-    public String getKeyword() {
-        return keyword;
-    }
-
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
-
-    public String getDuration() {
-        return duration;
-    }
-
-    public void setDuration(String duration) {
-        this.duration = duration;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public List<Content> getContents() {
-        return contents;
-    }
-
-    public void setContents(List<Content> contents) {
-        this.contents = contents;
-    }
-
+    // 편의 메서드들은 그대로 유지하는 것이 좋습니다.
     public void addContent(Content content) {
         contents.add(content);
         content.setUserdatainput(this);
