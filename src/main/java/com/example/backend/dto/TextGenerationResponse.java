@@ -1,18 +1,21 @@
-// src/main/java/com/example/backend/dto/TextGenerationResponse.java
 package com.example.backend.dto;
 
+// import lombok.AllArgsConstructor; // 💡💡💡 이 임포트 라인을 삭제합니다! 💡💡💡
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
-// 광고 문구 생성 응답 DTO
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor // 기본 생성자
+// @AllArgsConstructor // 💡💡💡 이 어노테이션을 삭제합니다! 💡💡💡
 public class TextGenerationResponse {
-    private List<String> adTexts; // 생성된 광고 문구 목록
+    private List<String> adTexts; // 광고 문구 리스트
+
+    // 💡💡💡 List<String> adTexts를 인자로 받는 생성자는 그대로 유지합니다. 💡💡💡
+    public TextGenerationResponse(List<String> adTexts) {
+        this.adTexts = adTexts;
+    }
 }

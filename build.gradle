@@ -1,7 +1,7 @@
 plugins {
 	id 'java'
 	id 'war'
-	id 'org.springframework.boot' version '3.4.5'
+	id 'org.springframework.boot' version '3.2.7' // 💡 수정된 Spring Boot 버전 (3.4.5 -> 3.2.7)
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -34,7 +34,7 @@ dependencies {
     implementation 'mysql:mysql-connector-java:8.0.33'
     implementation 'commons-codec:commons-codec:1.15'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // 💡 추가된 OAuth2 Client 의존성
 
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
@@ -46,6 +46,12 @@ dependencies {
 	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// 💡💡💡 Lombok 컴파일 오류 해결을 위한 추가 설정 💡💡💡
+// NetBeans나 특정 IDE 환경에서 Lombok 어노테이션 프로세서 문제 해결
+tasks.withType(JavaCompile) {
+    options.compilerArgs += '-Alombok.generated.is.null=true'
 }
 
 // 💡💡💡 여기에 있는 tasks.named('test') 부분을 다음처럼 바꿔 줘! 💡💡💡

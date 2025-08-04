@@ -1,6 +1,6 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.AdContentStorageDtos.SaveAdContentRequest;
+import com.example.backend.dto.SaveAdContentRequest;
 import com.example.backend.entity.AdContent;
 import com.example.backend.repository.AdContentRepository;
 import lombok.RequiredArgsConstructor;
