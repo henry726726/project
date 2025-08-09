@@ -1,30 +1,34 @@
 package com.example.backend.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AccessTokenEntity {
 
     @Id
-    private String userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(length = 1000)
     private String accessToken;
 
-    public AccessTokenEntity() {
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    // --- Getter & Setter ---
+    public Long getId() {
+        return id;
     }
 
-    public AccessTokenEntity(String userId, String accessToken) {
-        this.userId = userId;
-        this.accessToken = accessToken;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getAccessToken() {
@@ -33,5 +37,13 @@ public class AccessTokenEntity {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

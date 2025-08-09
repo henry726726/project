@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
+
 @Service
 public class AdSyncService {
 
@@ -39,32 +41,38 @@ public class AdSyncService {
 
             System.out.println("▶ 응답된 광고 수: " + dataArray.size());
 
-            // DB에서 adAccount 불러오기
-            AdAccount adAccount = adAccountRepository.findByAccountId(adAccountId)
-                    .orElseThrow(() -> new RuntimeException("❌ AdAccount not found: " + adAccountId));
+            // 🔁 여러 AdAccount가 같은 accountId를 가질 수 있다고 가정
+            List<AdAccount> adAccounts = adAccountRepository.findAllByAccountId(adAccountId);
 
-            System.out.println("▶ DB에서 찾은 AdAccount: " + adAccount.getAccountId());
+            if (adAccounts.isEmpty()) {
+                throw new RuntimeException("❌ 해당 accountId를 가진 AdAccount가 없습니다: " + adAccountId);
+            }
 
-            for (JsonNode adNode : dataArray) {
-                String adId = adNode.get("id").asText();
-                String name = adNode.get("name").asText();
-                String status = adNode.get("status").asText();
+            for (AdAccount adAccount : adAccounts) {
+                System.out.println("▶ DB에서 찾은 AdAccount: " + adAccount.getAccountId());
 
-                if (adRepository.existsByAdId(adId)) {
-                    System.out.println("⚠️ 이미 존재하는 광고: " + adId);
-                    continue;
+                for (JsonNode adNode : dataArray) {
+                    String adId = adNode.get("id").asText();
+                    String name = adNode.get("name").asText();
+                    String status = adNode.get("status").asText();
+
+                    // 중복 광고는 저장하지 않음
+                    if (adRepository.existsByAdId(adId)) {
+                        System.out.println("⚠️ 이미 존재하는 광고: " + adId);
+                        continue;
+                    }
+
+                    Ad ad = new Ad();
+                    ad.setAdId(adId);
+                    ad.setName(name);
+                    ad.setStatus(status);
+                    ad.setAdAccount(adAccount);
+
+                    System.out.println("👉 저장할 광고: " + adId + ", " + name + ", " + status
+                            + ", account: " + adAccount.getAccountId());
+
+                    adRepository.save(ad);
                 }
-
-                Ad ad = new Ad();
-                ad.setAdId(adId);
-                ad.setName(name);
-                ad.setStatus(status);
-                ad.setAdAccount(adAccount);
-
-                System.out.println(
-                        "👉 저장할 광고: " + adId + ", " + name + ", " + status + ", account: " + adAccount.getAccountId());
-
-                adRepository.save(ad);
             }
 
             System.out.println("✅ 광고 목록 DB 저장 완료");

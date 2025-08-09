@@ -1,11 +1,18 @@
 // src/FacebookInput.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function FacebookInput() {
-  // 광고 설정 값들을 저장할 상태
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
+  const [adAccounts, setAdAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
+
   const [adSettings, setAdSettings] = useState({
+    accountId: '',
+    pageId: '',
+    link: '',
     billingEvent: 'IMPRESSIONS',
     optimizationGoal: 'LINK_CLICKS',
     bidStrategy: 'LOWEST_COST_WITHOUT_CAP',
@@ -13,68 +20,115 @@ function FacebookInput() {
     startTime: '',
   });
 
-  const [isSaving, setIsSaving] = useState(false); // 저장 중 상태
-  // ✅ 추가: 광고가 한 번이라도 성공적으로 생성(업로드)되었는지 추적하는 상태
+  const [isSaving, setIsSaving] = useState(false);
   const [adCreatedOrUpdated, setAdCreatedOrUpdated] = useState(false);
 
-  // 입력 필드 값이 변경될 때 상태를 업데이트하는 함수
+  // 광고 계정 목록 불러오기
+  useEffect(() => {
+    const jwtToken = localStorage.getItem('jwtToken');
+    if (!jwtToken) return;
+
+    axios
+      .get(`${apiBase}/meta/adaccounts`, {
+        headers: { Authorization: `Bearer ${jwtToken}` },
+      })
+      .then((res) => setAdAccounts(res.data))
+      .catch((err) => console.error('광고 계정 불러오기 실패:', err));
+  }, [apiBase]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setAdSettings(prevSettings => ({
-      ...prevSettings,
+    setAdSettings((prev) => ({
+      ...prev,
       [name]: value,
     }));
-    // 입력값이 변경되면, "생성/업데이트" 상태를 초기화하여 다시 "생성하기" 버튼으로 돌아가게 할 수도 있습니다.
-    // 여기서는 유지하되, 필요에 따라 setAdCreatedOrUpdated(false); 추가 고려
   };
 
-  // '광고 생성하기' 또는 '업로드하기' 버튼을 클릭했을 때 실행될 함수
+  const handleAccountSelect = (e) => {
+    const value = e.target.value;
+    setSelectedAccount(value);
+    if (value) {
+      const [accountId, pageId] = value.split(',');
+      setAdSettings((prev) => ({
+        ...prev,
+        accountId,
+        pageId,
+      }));
+    } else {
+      setAdSettings((prev) => ({
+        ...prev,
+        accountId: '',
+        pageId: '',
+      }));
+    }
+  };
+
   const handleCreateAd = async () => {
+    if (!adSettings.accountId || !adSettings.pageId) {
+      alert('광고 계정을 선택해 주세요.');
+      return;
+    }
+    if (!adSettings.link) {
+      alert('랜딩 URL을 입력해 주세요.');
+      return;
+    }
     if (!adSettings.dailyBudget || !adSettings.startTime) {
-      alert('하루 예산과 광고 시작 시간은 필수로 입력해야 합니다! 😅');
+      alert('하루 예산과 광고 시작 시간은 필수 입력 항목입니다! 😅');
+      return;
+    }
+
+    const jwtToken = localStorage.getItem('jwtToken');
+    if (!jwtToken) {
+      alert('로그인이 필요합니다!');
       return;
     }
 
     setIsSaving(true);
 
     try {
-      // ✅ 백엔드 API로 설정값 전송 로직
-      const response = await axios.post('http://localhost:8080/api/meta/create-ad', adSettings);
+      const payload = {
+        accountId: adSettings.accountId,
+        pageId: adSettings.pageId,
+        link: adSettings.link,
+        billingEvent: adSettings.billingEvent,
+        optimizationGoal: adSettings.optimizationGoal,
+        bidStrategy: adSettings.bidStrategy,
+        dailyBudget: adSettings.dailyBudget,
+        startTime: adSettings.startTime,
+      };
 
-      console.log('광고 캠페인 생성/업데이트 응답:', response.data);
-      alert('광고 캠페인이 성공적으로 생성/업데이트되었습니다! 🎉');
+      const response = await axios.post(`${apiBase}/meta/create-ad`, payload, {
+        headers: {
+          Authorization: `Bearer ${jwtToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // ✅ 성공 시: 광고가 생성되었음을 나타내는 상태 업데이트
+      console.log('✅ 광고 생성 응답:', response.data);
+      alert('🎉 광고가 성공적으로 생성되었습니다!');
       setAdCreatedOrUpdated(true);
-
-      // 성공 후 입력 필드 초기화 (선택 사항) - 일반적으로 업데이트 버튼으로 변경되면 초기화 안함
-      // setAdSettings({ ... });
-
     } catch (error) {
-      console.error('광고 캠페인 생성/업데이트 중 오류 발생:', error);
-      const errorMessage = error.response && error.response.data && error.response.data.message
-                           ? error.response.data.message
-                           : '광고 캠페인 생성/업데이트 중 예상치 못한 오류가 발생했습니다.';
-      alert(errorMessage);
+      console.error('❌ 광고 생성 실패:', error);
+      const message =
+        error.response?.data?.message ||
+        error.response?.data ||
+        '광고 생성 중 오류가 발생했습니다.';
+      alert(message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // '광고 생성하기' 버튼 표시 조건: dailyBudget과 startTime이 모두 채워졌을 때
-  const canShowCreateAdButton = adSettings.dailyBudget && adSettings.startTime;
-
-  // ✅ 버튼 텍스트 결정: adCreatedOrUpdated 상태에 따라 달라짐
+  const canShowCreateAdButton =
+    adSettings.link && adSettings.dailyBudget && adSettings.startTime;
   const buttonText = adCreatedOrUpdated ? '광고 업로드하기' : '광고 생성하기';
 
-
-  // 스타일 정의 (이전과 동일)
   const tdStyle = {
     border: '1px solid #ccc',
     padding: '8px',
     verticalAlign: 'top',
     fontWeight: 'normal',
-    color: '#555'
+    color: '#555',
   };
   const thStyle = {
     border: '1px solid #ccc',
@@ -83,14 +137,14 @@ function FacebookInput() {
     textAlign: 'left',
     fontWeight: 'bold',
     color: '#333',
-    width: '40%'
+    width: '40%',
   };
   const labelStyle = {
     display: 'block',
     marginBottom: '5px',
     fontWeight: 'bold',
     color: '#444',
-    fontSize: '0.95em'
+    fontSize: '0.95em',
   };
   const inputStyle = {
     width: '100%',
@@ -98,27 +152,61 @@ function FacebookInput() {
     border: '1px solid #ccc',
     borderRadius: '5px',
     fontSize: '1em',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
   };
 
   return (
-    <div style={{
-      maxWidth: '600px',
-      margin: '40px auto',
-      padding: '25px',
-      border: '1px solid #ddd',
-      borderRadius: '10px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-      backgroundColor: '#fff',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <h2 style={{ color: '#333', textAlign: 'center', marginBottom: '30px' }}>📊 페이스북 광고 설정</h2>
+    <div
+      style={{
+        maxWidth: '600px',
+        margin: '40px auto',
+        padding: '25px',
+        border: '1px solid #ddd',
+        borderRadius: '10px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        backgroundColor: '#fff',
+        fontFamily: 'Arial, sans-serif',
+      }}
+    >
+      <h2 style={{ color: '#333', textAlign: 'center', marginBottom: '30px' }}>
+        📊 페이스북 광고 설정
+      </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        {/* 광고 설정 입력 필드들은 이전과 동일 */}
-        {/* ... (과금 기준, 최적화 목표, 입찰 방식, 하루 예산, 광고 시작 시간 필드) ... */}
+        {/* 광고 계정 선택 */}
+        <div>
+          <label style={labelStyle}>광고 계정 선택:</label>
+          <select
+            value={selectedAccount}
+            onChange={handleAccountSelect}
+            style={inputStyle}
+          >
+            <option value="">-- 선택 --</option>
+            {adAccounts.map((acc) => (
+              <option
+                key={`${acc.accountId}_${acc.pageId}`}
+                value={`${acc.accountId},${acc.pageId}`}
+              >
+                {acc.name} ({acc.accountId})
+              </option>
+            ))}
+          </select>
+        </div>
 
-        {/* 과금 기준 (billingEvent) */}
+        {/* 랜딩 URL */}
+        <div>
+          <label style={labelStyle}>랜딩 URL (Link):</label>
+          <input
+            type="url"
+            name="link"
+            value={adSettings.link}
+            onChange={handleChange}
+            placeholder="https://example.com/your-landing"
+            style={inputStyle}
+          />
+        </div>
+
+        {/* 과금 기준 */}
         <div>
           <label style={labelStyle}>과금 기준 (Billing Event):</label>
           <select
@@ -132,7 +220,7 @@ function FacebookInput() {
           </select>
         </div>
 
-        {/* 최적화 목표 (optimizationGoal) */}
+        {/* 최적화 목표 */}
         <div>
           <label style={labelStyle}>최적화 목표 (Optimization Goal):</label>
           <select
@@ -141,13 +229,13 @@ function FacebookInput() {
             onChange={handleChange}
             style={inputStyle}
           >
-            <option value="LINK_CLICKS">링크 클릭 (LINK_CLICKS)</option>
-            <option value="REACH">도달 (REACH)</option>
-            <option value="CONVERSIONS">전환 (CONVERSIONS)</option>
+            <option value="LINK_CLICKS">링크 클릭</option>
+            <option value="REACH">도달</option>
+            <option value="CONVERSIONS">전환</option>
           </select>
         </div>
 
-        {/* 입찰 방식 (bidStrategy) */}
+        {/* 입찰 방식 */}
         <div>
           <label style={labelStyle}>입찰 방식 (Bid Strategy):</label>
           <select
@@ -156,12 +244,12 @@ function FacebookInput() {
             onChange={handleChange}
             style={inputStyle}
           >
-            <option value="LOWEST_COST_WITHOUT_CAP">최저 비용 (LOWEST_COST_WITHOUT_CAP)</option>
-            <option value="COST_CAP">비용 상한 (COST_CAP)</option>
+            <option value="LOWEST_COST_WITHOUT_CAP">최저 비용</option>
+            <option value="COST_CAP">비용 상한</option>
           </select>
         </div>
 
-        {/* 하루 예산 (dailyBudget) */}
+        {/* 하루 예산 */}
         <div>
           <label style={labelStyle}>하루 예산 (Daily Budget - 원):</label>
           <input
@@ -169,12 +257,12 @@ function FacebookInput() {
             name="dailyBudget"
             value={adSettings.dailyBudget}
             onChange={handleChange}
-            placeholder="예: 140000 (1400원)"
+            placeholder="예: 15000"
             style={inputStyle}
           />
         </div>
 
-        {/* 광고 시작 시간 (startTime) */}
+        {/* 광고 시작 시간 */}
         <div>
           <label style={labelStyle}>광고 시작 시간 (Start Time):</label>
           <input
@@ -186,8 +274,7 @@ function FacebookInput() {
           />
         </div>
 
-
-        {/* ✅ 광고 생성/업로드하기 버튼: 조건부 렌더링 및 텍스트 변경 적용 */}
+        {/* 버튼 */}
         {canShowCreateAdButton && (
           <button
             onClick={handleCreateAd}
@@ -196,7 +283,7 @@ function FacebookInput() {
               width: '100%',
               padding: '12px 20px',
               marginTop: '20px',
-              backgroundColor: isSaving ? '#cccccc' : '#1877F2',
+              backgroundColor: isSaving ? '#cccccc' : '#6f42c1',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
@@ -204,40 +291,63 @@ function FacebookInput() {
               fontWeight: 'bold',
               cursor: isSaving ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s ease',
-              boxShadow: '0 4px 8px rgba(24,119,242,0.2)'
+              boxShadow: '0 4px 8px rgba(111,66,193,0.2)',
             }}
-            onMouseOver={e => !isSaving && (e.currentTarget.style.backgroundColor = '#105fb2')}
-            onMouseOut={e => !isSaving && (e.currentTarget.style.backgroundColor = '#1877F2')}
+            onMouseOver={(e) =>
+              !isSaving && (e.currentTarget.style.backgroundColor = '#5a37a9')
+            }
+            onMouseOut={(e) =>
+              !isSaving && (e.currentTarget.style.backgroundColor = '#6f42c1')
+            }
           >
-            {isSaving ? '진행 중...' : buttonText}
+            {isSaving ? '메타 광고 생성 중…' : buttonText}
           </button>
         )}
       </div>
 
-      {/* 현재 설정 미리보기는 이전과 동일 */}
-      <div style={{ marginTop: '40px', padding: '15px', backgroundColor: '#eef3f9', borderRadius: '8px', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ color: '#444', marginBottom: '15px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>현재 설정 미리보기</h3>
+      {/* 미리보기 */}
+      <div
+        style={{
+          marginTop: '40px',
+          padding: '15px',
+          backgroundColor: '#eef3f9',
+          borderRadius: '8px',
+        }}
+      >
+        <h3 style={{ color: '#444', marginBottom: '15px' }}>📋 현재 설정 미리보기</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             <tr>
+              <th style={thStyle}>광고 계정</th>
+              <td style={tdStyle}>
+                {selectedAccount
+                  ? `${adSettings.accountId} / ${adSettings.pageId}`
+                  : '-'}
+              </td>
+            </tr>
+            <tr>
+              <th style={thStyle}>랜딩 URL</th>
+              <td style={tdStyle}>{adSettings.link || '-'}</td>
+            </tr>
+            <tr>
               <th style={thStyle}>과금 기준</th>
-              <td style={tdStyle}>{adSettings.billingEvent || '미설정'}</td>
+              <td style={tdStyle}>{adSettings.billingEvent}</td>
             </tr>
             <tr>
               <th style={thStyle}>최적화 목표</th>
-              <td style={tdStyle}>{adSettings.optimizationGoal || '미설정'}</td>
+              <td style={tdStyle}>{adSettings.optimizationGoal}</td>
             </tr>
             <tr>
               <th style={thStyle}>입찰 방식</th>
-              <td style={tdStyle}>{adSettings.bidStrategy || '미설정'}</td>
+              <td style={tdStyle}>{adSettings.bidStrategy}</td>
             </tr>
             <tr>
               <th style={thStyle}>하루 예산</th>
-              <td style={tdStyle}>{adSettings.dailyBudget ? `${adSettings.dailyBudget} 원` : '미설정'}</td>
+              <td style={tdStyle}>{adSettings.dailyBudget} 원</td>
             </tr>
             <tr>
               <th style={thStyle}>광고 시작 시간</th>
-              <td style={tdStyle}>{adSettings.startTime || '미설정'}</td>
+              <td style={tdStyle}>{adSettings.startTime}</td>
             </tr>
           </tbody>
         </table>

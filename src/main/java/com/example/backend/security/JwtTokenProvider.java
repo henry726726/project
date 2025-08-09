@@ -1,63 +1,71 @@
 package com.example.backend.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.HttpServletRequest; // HttpServletRequest 임포트 추가
-import lombok.RequiredArgsConstructor; // RequiredArgsConstructor 추가
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService; // UserDetailsService 추가
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils; // StringUtils 임포트 추가
-
-import java.security.Key;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.Base64;
 import java.util.Date;
 import java.util.stream.Collectors;
 
+import javax.crypto.SecretKey;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+
 @Component
-@RequiredArgsConstructor // UserDetailsService 주입을 위해 추가
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
+    private SecretKey key;
 
-    @Value("${jwt.expiration}")
-    private long tokenValidityInMilliseconds;
+    @Value("${jwt.secret}") // ✅ application.properties에서 로드
+    private String secret;
 
-    private Key key;
-    private final UserDetailsService userDetailsService; // CustomUserDetailsService 주입
+    @Value("${jwt.expiration:3600000}")
+    private long validityInMilliseconds;
 
-    @PostConstruct
-    public void init() {
-        this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
+    private final UserDetailsService userDetailsService;
+
+    public JwtTokenProvider(UserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
     }
 
-    // JWT 토큰 생성
+    @PostConstruct
+    protected void init() {
+        byte[] keyBytes = Base64.getDecoder().decode(secret);
+        this.key = Keys.hmacShaKeyFor(keyBytes);
+        System.out.println("✅ JWT Secret Length: " + keyBytes.length);
+    }
+
     public String createToken(Authentication authentication) {
-        String authorities = authentication.getAuthorities().stream()
+        return generateToken(authentication.getName());
+    }
+
+    public String generateToken(String userEmail) {
+        UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+
+        Claims claims = Jwts.claims().setSubject(userDetails.getUsername());
+        claims.put("auth", userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
+                .collect(Collectors.joining(",")));
 
         Date now = new Date();
-        Date validity = new Date(now.getTime() + tokenValidityInMilliseconds);
+        Date expiry = new Date(now.getTime() + validityInMilliseconds);
 
         return Jwts.builder()
-                .setSubject(authentication.getName())
-                .claim("auth", authorities)
+                .setClaims(claims)
                 .setIssuedAt(now)
-                .setExpiration(validity)
+                .setExpiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS512)
                 .compact();
     }
 
-    // HTTP 요청 헤더에서 JWT 토큰 추출 (JwtAuthenticationFilter에서 호출)
     public String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
@@ -66,35 +74,25 @@ public class JwtTokenProvider {
         return null;
     }
 
-    // JWT 토큰에서 사용자 이메일(subject) 추출 (JwtAuthenticationFilter에서 호출)
     public String getUserEmailFromToken(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        return getUsername(token);
     }
 
-    // 이메일을 통해 UserDetails 객체 로드 (JwtAuthenticationFilter에서 호출)
     public UserDetails getUserDetails(String email) {
         return userDetailsService.loadUserByUsername(email);
     }
 
-    // JWT 토큰 유효성 검증
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
-        } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
-            System.out.println("잘못된 JWT 서명입니다.");
-        } catch (ExpiredJwtException e) {
-            System.out.println("만료된 JWT 토큰입니다.");
-        } catch (UnsupportedJwtException e) {
-            System.out.println("지원되지 않는 JWT 토큰입니다.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("JWT 토큰이 잘못되었습니다.");
+        } catch (JwtException | IllegalArgumentException e) {
+            System.out.println("❌ Invalid JWT: " + e.getMessage());
         }
         return false;
+    }
+
+    public String getUsername(String token) {
+        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
     }
 }

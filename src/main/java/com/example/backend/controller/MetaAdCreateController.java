@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
-import com.example.backend.service.MetaAdService;
+import com.example.backend.dto.MetaAdCreationRequest;
+import com.example.backend.service.MetaAdCreatorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,12 +11,11 @@ import org.springframework.web.bind.annotation.*;
 public class MetaAdCreateController {
 
     @Autowired
-    private MetaAdService metaAdService;
+    private MetaAdCreatorService metaAdCreatorService;
 
-    // 👉 비즈니스 포트폴리오 광고 계정만 저장하는 엔드포인트
-    @GetMapping("/adaccounts/business")
-    public ResponseEntity<String> saveBusinessAdAccounts(@RequestParam String token) {
-        metaAdService.saveAdAccounts(token); // ✅ 기존 메서드 호출
-        return ResponseEntity.ok("✅ 비즈니스 광고 계정 저장 완료");
+    @PostMapping("/create-ad")
+    public ResponseEntity<String> createAd(@RequestBody MetaAdCreationRequest request) {
+        metaAdCreatorService.createInitialAd(request); // ✅ 서비스 메서드 이름 일치
+        return ResponseEntity.ok("✅ 광고 생성 완료 (POST 기반)");
     }
 }

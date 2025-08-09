@@ -13,7 +13,7 @@ public class Ad {
     private String status;
 
     @ManyToOne
-    @JoinColumn(name = "ad_account_id")
+    @JoinColumn(name = "ad_account_id", referencedColumnName = "id")
     private AdAccount adAccount;
 
     // Getters and Setters

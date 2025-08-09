@@ -5,29 +5,30 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.example.backend.entity.User;
 
 @Entity
+@Table(name = "ad_account", uniqueConstraints = @UniqueConstraint(columnNames = { "accountId", "pageId" }))
 public class AdAccount {
 
     @Id
-    private String id;
-
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private String accountId;
     private String name;
 
     private String pageId;
     private String instagramId;
 
-    // ✅ 광고 계정 → 사용자 연관관계 (N:1)
+    // 광고 계정 → 사용자 연관관계 (N:1)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id") // 외래키 컬럼명
     @JsonBackReference // 순환참조 방지
     private User user;
 
     // --- Getter & Setter ---
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

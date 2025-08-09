@@ -14,7 +14,7 @@ public class Content {
     // @ManyToOne: 여러 콘텐츠가 하나의 아이디에 연결됨
     // @JoinColumn: 외래키 이름을 DB에 명시적으로 지정
     @ManyToOne
-    @JoinColumn(name = "userdatainput_id")
+    @JoinColumn(name = "user_id")
     private UserDataInput userdatainput;
 
     private String caption;

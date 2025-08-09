@@ -4,6 +4,8 @@ import com.example.backend.security.JwtAuthenticationFilter;
 import com.example.backend.security.JwtTokenProvider;
 import com.example.backend.security.CustomOAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,6 +31,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
         private final JwtTokenProvider jwtTokenProvider;
         private final UserDetailsService userDetailsService;
         private final CustomOAuth2SuccessHandler successHandler;
@@ -36,24 +39,24 @@ public class SecurityConfig {
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
-                                .httpBasic(httpBasicConfig -> httpBasicConfig.disable())
+                                .httpBasic(httpBasic -> httpBasic.disable())
                                 .csrf(csrf -> csrf.disable())
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(
-                                                                "/auth/**", // ✅ 회원가입/로그인 API 허용 (중요)
-                                                                "/api/register", // ✅ 혹시 register 경로 따로 있다면 허용
-                                                                "/api/generate",
+                                                                "/auth/**",
+                                                                "/api/register",
                                                                 "/meta/**",
+                                                                "/api/generate",
                                                                 "/", "/login**", "/error**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth -> oauth.successHandler(successHandler))
-                                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
-                                                UsernamePasswordAuthenticationFilter.class);
+                                .authenticationProvider(authenticationProvider())
+                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();
         }
@@ -66,8 +69,8 @@ public class SecurityConfig {
         @Bean
         public DaoAuthenticationProvider authenticationProvider() {
                 DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-                provider.setPasswordEncoder(passwordEncoder());
                 provider.setUserDetailsService(userDetailsService);
+                provider.setPasswordEncoder(passwordEncoder());
                 return provider;
         }
 

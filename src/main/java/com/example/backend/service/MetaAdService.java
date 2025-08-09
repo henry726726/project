@@ -72,7 +72,6 @@ public class MetaAdService {
 
                     // ✅ 저장
                     AdAccount ad = new AdAccount();
-                    ad.setId(adId + "_" + pageId); // 고유 ID 보장
                     ad.setAccountId(accountId);
                     ad.setName(name);
                     ad.setPageId(pageId);

@@ -1,7 +1,6 @@
 package com.example.backend.meta;
 
 import com.example.backend.entity.Content;
-import com.example.backend.repository.AccessTokenRepository;
 import com.example.backend.repository.AdAccountRepository;
 import com.example.backend.repository.ContentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,40 +16,37 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class MetaAdUpdater {
 
     @Autowired
-    private AccessTokenRepository accessTokenRepository;
-
-    @Autowired
     private AdAccountRepository adAccountRepository;
 
     @Autowired
     private ContentRepository contentRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public void updateAdByContentId(String contentId, String userId) {
+    public void updateAdByContentId(String contentId, String accessToken) {
         System.out.println("✅ [Start] 광고 업데이트 실행");
         System.out.println("📌 contentId: " + contentId);
-        System.out.println("📌 userId: " + userId);
-        // 1. 콘텐츠 조회 → userId 추출
+
+        // 1. 콘텐츠 조회
         Content content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new RuntimeException("Content not found"));
+
         System.out.println("📝 content.caption: " + content.getCaption());
         System.out.println("🖼️ content.imageUrl: " + content.getImageUrl());
-        // 2. access token 조회
-        String accessToken = accessTokenRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Access token not found")).getAccessToken();
         System.out.println("🔑 accessToken: " + accessToken);
-        // 3. adAccountId 조회
+
+        // 2. adAccountId 조회
         String rawAccountId = adAccountRepository.findAll().stream()
                 .findFirst().orElseThrow(() -> new RuntimeException("No ad account found")).getAccountId();
         String adAccountId = "act_" + rawAccountId;
         System.out.println("📣 adAccountId: " + adAccountId);
-        // 4. 광고 리스트에서 첫 번째 adId 추출
+
+        // 3. 광고 리스트에서 첫 번째 adId 추출
         String adId = getFirstAdId(adAccountId, accessToken);
         System.out.println("🆔 adId: " + adId);
-        // 5. 새로운 creative 생성 및 광고 업데이트
+
+        // 4. 새로운 creative 생성 및 광고 업데이트
         String creativeId = createNewAdCreative(adAccountId, accessToken, content);
         System.out.println("🎨 creativeId: " + creativeId);
         updateAdCreative(adId, creativeId, accessToken);
@@ -72,7 +68,7 @@ public class MetaAdUpdater {
                 throw new RuntimeException("광고 목록이 비어있습니다. 광고를 먼저 생성하세요.");
             }
 
-            return data.get(0).path("id").asText(); // 안전하게 첫 번째 광고 ID만 추출
+            return data.get(0).path("id").asText();
         } catch (Exception e) {
             throw new RuntimeException("광고 ID 파싱 실패", e);
         }
@@ -92,7 +88,6 @@ public class MetaAdUpdater {
         body.add("access_token", accessToken);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-
         ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
 
         System.out.println("🔥 AdCreative 요청 응답: " + response.getBody());
@@ -119,7 +114,6 @@ public class MetaAdUpdater {
         body.add("access_token", accessToken);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
 
         if (!response.getStatusCode().is2xxSuccessful()) {
