@@ -22,6 +22,7 @@ public class AdContentService {
         AdContent adContent = new AdContent();
         adContent.setAdText(request.getAdText());
         adContent.setGeneratedImageBase64(request.getGeneratedImageBase64());
+        adContent.setOriginalImageBase64(request.getOriginalImageBase64());
         adContent.setProduct(request.getProduct());
         adContent.setTarget(request.getTarget());
         adContent.setPurpose(request.getPurpose());

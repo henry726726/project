@@ -19,6 +19,7 @@ public class SaveAdContentRequest {
     private String duration;
     private String adText; // 광고 문구
     private String generatedImageBase64; // Base64 인코딩된 이미지
+    private String originalImageBase64;
 
     // 💡💡💡 수동으로 Getter/Setter 메소드를 추가합니다. 💡💡💡
     // Lombok이 작동하지 않는 환경을 대비한 확실한 해결책입니다.

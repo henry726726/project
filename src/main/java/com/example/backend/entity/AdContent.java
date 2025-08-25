@@ -37,6 +37,10 @@ public class AdContent {
     @Column(columnDefinition = "TEXT")
     private String adText;
 
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String originalImageBase64;
+
     // 합성된 이미지 (Base64 인코딩 문자열)
     @Lob
     @Column(columnDefinition = "LONGTEXT")

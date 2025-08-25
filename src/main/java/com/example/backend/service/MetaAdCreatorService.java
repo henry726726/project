@@ -4,10 +4,12 @@ import com.example.backend.dto.MetaAdCreationRequest;
 import com.example.backend.entity.AccessTokenEntity;
 import com.example.backend.entity.AdAccount;
 import com.example.backend.entity.AdContent;
+import com.example.backend.entity.AdRun;
 import com.example.backend.entity.User;
 import com.example.backend.repository.AccessTokenRepository;
 import com.example.backend.repository.AdAccountRepository;
 import com.example.backend.repository.AdContentRepository;
+import com.example.backend.repository.AdRunRepository;
 import com.example.backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +29,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -41,6 +46,8 @@ public class MetaAdCreatorService {
     private AccessTokenRepository accessTokenRepository;
     @Autowired
     private AdContentRepository adContentRepository;
+    @Autowired
+    private AdRunRepository adRunRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -93,8 +100,41 @@ public class MetaAdCreatorService {
         // 광고 크리에이티브 생성
         String creativeId = createAdCreative(adAccountId, accessToken, caption, imageHash, pageId, request.getLink());
 
-        // 광고 생성
-        createAd(adAccountId, adSetId, creativeId, accessToken);
+        // 광고 생성 → adId 반환
+        String adId = createAd(adAccountId, adSetId, creativeId, accessToken);
+
+        OffsetDateTime startTime = null;
+        if (request.getStartTime() != null && !request.getStartTime().isBlank()) {
+            try {
+                LocalDateTime ldt = LocalDateTime.parse(request.getStartTime()); // "2025-08-25T15:30"
+                startTime = ldt.atOffset(ZoneOffset.of("+09:00")); // 한국 시간대
+            } catch (Exception e) {
+                throw new RuntimeException("❌ startTime 변환 실패: " + request.getStartTime(), e);
+            }
+        }
+
+        // ✅ AdRun 엔티티 저장
+        AdRun adRun = AdRun.builder()
+                .content(content) // 어떤 콘텐츠로 집행했는지
+                .user(user) // 누가 집행했는지
+                .accountId(adAccountId)
+                .pageId(pageId)
+                .link(request.getLink())
+                .billingEvent(request.getBillingEvent())
+                .optimizationGoal(request.getOptimizationGoal())
+                .bidStrategy(request.getBidStrategy())
+                .dailyBudget(request.getDailyBudget())
+                .startTime(startTime)
+                .imageGeneratedAt(content.getCreatedAt().atOffset(ZoneOffset.UTC)) // 예시: 콘텐츠 생성 시간
+                .adModifiedAt(OffsetDateTime.now()) // 업로드 시점
+                .campaignId(campaignId)
+                .adsetId(adSetId)
+                .creativeId(creativeId)
+                .adId(adId)
+                .status("CREATED") // 최초 상태
+                .build();
+
+        adRunRepository.save(adRun);
     }
 
     // ==== 유틸 ====
@@ -177,7 +217,7 @@ public class MetaAdCreatorService {
         return postAndExtractId(url, body);
     }
 
-    private void createAd(String adAccountId, String adSetId, String creativeId, String accessToken) {
+    private String createAd(String adAccountId, String adSetId, String creativeId, String accessToken) {
         String url = "https://graph.facebook.com/v22.0/" + adAccountId + "/ads";
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("name", "New Ad");
@@ -190,6 +230,62 @@ public class MetaAdCreatorService {
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new RuntimeException("❌ Ad 생성 실패: " + response.getBody());
         }
+
+        try {
+            JsonNode json = objectMapper.readTree(response.getBody());
+            return json.path("id").asText(); // adId 반환
+        } catch (Exception e) {
+            throw new RuntimeException("❌ Ad ID 파싱 실패: " + response.getBody(), e);
+        }
+    }
+
+    public void updateAd(Long adRunId, Long newContentId, String userEmail) {
+        // 1. DB에서 기존 집행 내역과 새 콘텐츠 조회
+        AdRun adRun = adRunRepository.findById(adRunId)
+                .orElseThrow(() -> new RuntimeException("❌ 해당 광고 집행 내역을 찾을 수 없습니다"));
+        AdContent newContent = adContentRepository.findById(newContentId)
+                .orElseThrow(() -> new RuntimeException("❌ 교체할 콘텐츠를 찾을 수 없습니다"));
+
+        // 2. 액세스 토큰 조회
+        AccessTokenEntity tokenEntity = accessTokenRepository.findByUserId(adRun.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("❌ AccessToken이 존재하지 않습니다"));
+        String accessToken = tokenEntity.getAccessToken();
+
+        // 3. 새 이미지 업로드 (Base64 → hash)
+        String newImageHash = uploadImageToFacebook(adRun.getAccountId(), accessToken,
+                newContent.getGeneratedImageBase64());
+
+        // 4. 새 Creative 생성
+        String newCreativeId = createAdCreative(
+                adRun.getAccountId(),
+                accessToken,
+                newContent.getAdText(),
+                newImageHash,
+                adRun.getPageId(),
+                adRun.getLink());
+
+        // 5. 광고 업데이트 (기존 ad_id를 새 creative_id로 교체)
+        String updateUrl = "https://graph.facebook.com/v22.0/" + adRun.getAdId();
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("creative", String.format("{\"creative_id\":\"%s\"}", newCreativeId));
+        body.add("status", "PAUSED"); // 업데이트 후 검토 필요 시
+        body.add("access_token", accessToken);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                updateUrl,
+                new HttpEntity<>(body, getFormHeaders()),
+                String.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("❌ 광고 업데이트 실패: " + response.getBody());
+        }
+
+        // 6. DB 업데이트
+        adRun.setCreativeId(newCreativeId);
+        adRun.setContent(newContent);
+        adRun.setAdModifiedAt(OffsetDateTime.now(ZoneOffset.UTC)); // 광고가 실제 교체된 시점
+        adRun.setStatus("UPDATED");
+        adRunRepository.save(adRun);
     }
 
     private String uploadImageToFacebook(String adAccountId, String accessToken, String imageBase64) {

@@ -1,6 +1,4 @@
-// src/ImageGenerator.jsx (단 한 글자도 생략 없이, 전체를 대체하세요!)
-
-import React, { useState, useEffect } from 'react'; // Suspense는 제거 (사용하지 않으므로)
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,13 +9,12 @@ function ImageGenerator() {
   const [textGenParams, setTextGenParams] = useState(null);
 
   const [imageFile, setImageFile] = useState(null);
+  const [originalBase64, setOriginalBase64] = useState(null); // ✅ 원본 이미지 Base64 저장용 추가
   const [resultUrl, setResultUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingContent, setIsSavingContent] = useState(false);
   const [error, setError] = useState('');
 
-  // ESLint 경고 방지를 위해 주석 처리
-  // eslint-disable-next-line no-unused-vars
   const [mode, setMode] = useState('controlnet');
 
   useEffect(() => {
@@ -42,15 +39,19 @@ function ImageGenerator() {
     }
   }, [navigate]);
 
+  // ✅ 이미지 파일 선택 시 원본 Base64로 변환해 저장
   const handleFileChange = (e) => {
-    setImageFile(e.target.files[0]);
-  };
+    const file = e.target.files[0];
+    setImageFile(file);
 
-  // eslint-disable-next-line no-unused-vars
-  const getTimestampString = () => { // 사용되지 않으므로 제거하거나 eslint-disable 처리
-    const now = new Date();
-    const pad = (n) => n.toString().padStart(2, '0');
-    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(',')[1];
+        setOriginalBase64(base64String); // ✅ 원본 Base64 저장
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleCompose = async () => {
@@ -67,12 +68,12 @@ function ImageGenerator() {
     setIsLoading(true);
     setResultUrl(null);
     setIsSavingContent(false);
-    setError(''); // 새로운 합성 시도 전에 에러 메시지 초기화
+    setError('');
 
     try {
       const form = new FormData();
       form.append('image', imageFile);
-      form.append('text', selectedAdText); // ✅ 백엔드 @RequestParam("text")에 맞춰 'text'로 변경
+      form.append('text', selectedAdText);
 
       const backendApiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
       const token = localStorage.getItem('jwtToken');
@@ -96,7 +97,6 @@ function ImageGenerator() {
         }
       );
 
-      // ArrayBuffer → Base64
       const base64 = btoa(
         new Uint8Array(res.data)
           .reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -144,6 +144,7 @@ function ImageGenerator() {
         duration: textGenParams?.duration || '',
         adText: selectedAdText,
         generatedImageBase64: cleanedBase64Image,
+        originalImageBase64: originalBase64, // ✅ 원본 Base64도 저장
       };
 
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -204,10 +205,8 @@ function ImageGenerator() {
         {isLoading ? '이미지 합성 중... ⏳' : '이미지 합성하기 🎨'}
       </button>
 
-      {/* 에러 메시지 표시 */}
       {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 
-      {/* 생성된 이미지 미리보기 */}
       {resultUrl && (
         <div style={{ marginTop: 20, borderTop: '1px solid #eee', paddingTop: 20 }}>
           <h3>합성된 이미지 👇</h3>
