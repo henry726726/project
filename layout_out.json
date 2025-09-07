@@ -1,0 +1,64 @@
+{
+  "product": {
+    "type": "걸이목걸이",
+    "material": "메탈",
+    "design": "꽃 모양",
+    "features": [
+      "다양한 색상의 보석",
+      "예쁜 꽃 모양"
+    ]
+  },
+  "background": {
+    "ideal_color": "화이트",
+    "texture": "평평한",
+    "lighting": "균일한",
+    "style": "클래식"
+  },
+  "layout": {
+    "subject_layout": {
+      "center": [
+        0.41,
+        0.4057142857142857
+      ],
+      "ratio": [
+        0.6,
+        0.6
+      ]
+    },
+    "nongraphic_layout": [
+      {
+        "type": "headline",
+        "bbox": [
+          0.04,
+          0.04,
+          0.92,
+          0.12
+        ],
+        "confidence": 0.5
+      },
+      {
+        "type": "headline",
+        "bbox": [
+          0.04,
+          0.84,
+          0.92,
+          0.12
+        ],
+        "confidence": 0.5
+      }
+    ],
+    "graphic_layout": [
+      {
+        "type": "logo",
+        "content": "RTT",
+        "bbox": [
+          0.017142857142857144,
+          0.02857142857142857,
+          0.037142857142857144,
+          0.05714285714285714
+        ],
+        "confidence": 0.8
+      }
+    ]
+  }
+}

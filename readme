@@ -1,0 +1,16 @@
+# 처음 시작시 
+conda create -n qwen python=3.10 -y
+conda activate qwen
+
+pip install --upgrade pip
+pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121 `
+  --index-url https://download.pytorch.org/whl/cu121
+
+
+pip install "git+https://github.com/huggingface/transformers"
+pip install "git+https://github.com/huggingface/diffusers"
+pip install accelerate qwen-vl-utils pillow
+
+
+
+python qwen25_vl_layout.py --product_name "리턴 투 티파니" --image "C:\Users\msj37\vlm\sample_ad.jpg" --save "C:\Users\msj37\vlm\layout_out.json"
