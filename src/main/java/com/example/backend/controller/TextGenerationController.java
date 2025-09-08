@@ -1,109 +1,98 @@
-package com.example.backend.controller; // ✅ 이 줄이 정상적으로 있어야 함.
+package com.example.backend.controller;
 
-import com.example.backend.dto.TextGenerationRequest;
-import com.example.backend.dto.TextGenerationResponse;
+import com.example.backend.dto.PromptRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException; // ✅ HttpClientErrorException 임포트 (이전에 추가했음)
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.bind.annotation.RequestBody;
 
-import java.util.Collections;
+import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.Arrays; // Arrays.asList 대신 List.of 사용 시 불필요. 그래도 안전하게 유지.
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "*")
 public class TextGenerationController {
 
         @Value("${openai.api.key}")
-        private String openaiApiKey;
+        private String apiKey;
 
-        private final RestTemplate restTemplate = new RestTemplate();
-        private final ObjectMapper objectMapper = new ObjectMapper(); // ✅ ObjectMapper 인스턴스 생성
+        private final OkHttpClient client = new OkHttpClient();
+        private final ObjectMapper mapper = new ObjectMapper();
+        private final MediaType mediaType = MediaType.parse("application/json");
 
         @PostMapping("/generate")
-        public ResponseEntity<TextGenerationResponse> generateAdText(@RequestBody TextGenerationRequest request) {
-                String openaiUrl = "https://api.openai.com/v1/chat/completions";
-
+        public Map<String, Object> generate(@RequestBody PromptRequest request) throws IOException {
+                // 🔹 확장된 프롬프트 템플릿
                 String prompt = String.format(
-                                "제품명: %s, 타겟: %s, 목적: %s, 강조 키워드: %s, 광고 기간: %s.\n" +
-                                                "위 정보를 바탕으로 창의적이고 설득력 있는 광고 문구 3개를 30자 내외로 생성해줘. 각 문구는 줄바꿈으로 구분해줘.",
+                                "다음 광고 정보를 바탕으로 문장은 짧고 강렬하게, 실제 온라인 광고 문구처럼 3개를 작성해줘. 각 문구는 30자 이내이며 CTA(Call-to-Action)를 포함해야 해.\n\n"
+                                                +
+                                                "제품명: %s\n" +
+                                                "타겟: %s\n" +
+                                                "목적: %s\n" +
+                                                "강조 키워드: %s\n" +
+                                                "광고 기간: %s\n\n" +
+                                                "응답 형식: [\"문구1\", \"문구2\", \"문구3\"]",
+
                                 request.getProduct(),
                                 request.getTarget(),
                                 request.getPurpose(),
                                 request.getKeyword(),
                                 request.getDuration());
 
-                String requestBody = String.format(
-                                "{\"model\": \"gpt-3.5-turbo\", \"messages\": [{\"role\": \"user\", \"content\": \"%s\"}], \"max_tokens\": 300, \"temperature\": 0.7}",
-                                prompt.replace("\"", "\\\"").replace("\n", "\\n"));
+                System.out.println("GPT 프롬프트:\n" + prompt);
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setBearerAuth(openaiApiKey);
+                Map<String, Object> message = Map.of("role", "user", "content", prompt);
+                Map<String, Object> body = Map.of("model", "gpt-4", "messages", List.of(message));
+                String json = mapper.writeValueAsString(body);
 
-                HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+                okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(json, mediaType);
+                Request gptRequest = new Request.Builder()
+                                .url("https://api.openai.com/v1/chat/completions")
+                                .post(requestBody)
+                                .addHeader("Authorization", "Bearer " + apiKey)
+                                .addHeader("Content-Type", "application/json")
+                                .build();
 
-                try {
-                        ResponseEntity<String> response = restTemplate.postForEntity(openaiUrl, entity, String.class);
+                try (Response response = client.newCall(gptRequest).execute()) {
+                        String responseBody = response.body().string();
+                        JsonNode root = mapper.readTree(responseBody);
 
-                        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                                String responseBody = response.getBody();
-                                System.out.println("DEBUG: Full OpenAI Response Body: " + responseBody);
-
-                                // ✅ 핵심 변경: ObjectMapper를 사용하여 JSON 응답을 안전하게 파싱
-                                JsonNode rootNode = objectMapper.readTree(responseBody);
-                                String generatedContent = rootNode.path("choices").path(0).path("message")
-                                                .path("content").asText();
-
-                                // 줄바꿈 기준으로 문구 분리
-                                // OpenAI 응답의 content에는 \n (이스케이프되지 않은 실제 줄바꿈 문자)가 있으므로 \n으로 분리
-                                List<String> adTexts = Arrays.stream(generatedContent.split("\\n")) // ✅ 줄바꿈 문자로 분리
-                                                .map(String::trim)
-                                                .filter(s -> !s.isEmpty())
-                                                .collect(Collectors.toList());
-
-                                // 생성된 문구가 없거나 비어있는 경우 (파싱은 성공했으나 결과가 없는 경우)
-                                if (adTexts.isEmpty()) {
-                                        return ResponseEntity
-                                                        .ok(new TextGenerationResponse(Collections.singletonList(
-                                                                        "OpenAI 응답은 받았으나 생성된 문구가 없습니다.")));
-                                }
-
-                                return ResponseEntity.ok(new TextGenerationResponse(adTexts));
-                        } else {
-                                System.err.println("OpenAI API 호출 실패: HTTP Status " + response.getStatusCode()
-                                                + ", Response: "
-                                                + response.getBody());
-                                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                                .body(new TextGenerationResponse(
-                                                                Collections.singletonList(
-                                                                                "문구 생성 중 오류 발생 (OpenAI API 응답 실패)")));
+                        // 👉 응답 구조가 에러인지 먼저 확인
+                        if (root.has("error")) {
+                                String errorMessage = root.get("error").get("message").asText();
+                                throw new RuntimeException("OpenAI API 오류: " + errorMessage);
                         }
-                } catch (HttpClientErrorException.Unauthorized e) { // 401 Unauthorized를 직접 캐치
-                        System.err.println("OpenAI API 호출 중 예외 발생: 401 Unauthorized - API 키 오류 예상");
-                        e.printStackTrace();
-                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED) // 클라이언트(Postman)에게 401을 돌려줌
-                                        .body(new TextGenerationResponse(
-                                                        Collections.singletonList("OpenAI API 키가 유효하지 않습니다. 확인해주세요.")));
-                } catch (HttpClientErrorException e) { // 다른 HttpClientErrorException (4xx 에러)
-                        System.err.println(
-                                        "OpenAI API 호출 중 클라이언트 에러 발생: " + e.getStatusCode() + " - " + e.getMessage());
-                        e.printStackTrace();
-                        return ResponseEntity.status(e.getStatusCode()) // 받은 상태 코드를 그대로 돌려줌
-                                        .body(new TextGenerationResponse(
-                                                        Collections.singletonList("OpenAI API 호출 중 오류 발생: "
-                                                                        + e.getStatusCode())));
-                } catch (Exception e) { // 기타 모든 예외
-                        System.err.println("OpenAI API 호출 중 예상치 못한 예외 발생: " + e.getMessage());
-                        e.printStackTrace();
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                        .body(new TextGenerationResponse(
-                                                        Collections.singletonList("문구 생성 중 알 수 없는 오류가 발생했습니다.")));
+
+                        // 👉 안전하게 choices 추출
+                        JsonNode choicesNode = root.get("choices");
+                        if (choicesNode == null || !choicesNode.isArray() || choicesNode.isEmpty()) {
+                                throw new RuntimeException("OpenAI 응답에 choices가 없습니다: " + responseBody);
+                        }
+
+                        JsonNode messageNode = choicesNode.get(0).get("message");
+                        if (messageNode == null || messageNode.get("content") == null) {
+                                throw new RuntimeException("OpenAI 응답에 content가 없습니다: " + responseBody);
+                        }
+
+                        String content = messageNode.get("content").asText();
+
+                        // 👉 GPT가 문자열 배열 형식으로 응답 안 주는 경우 대비 (ex. 그냥 문자열로 응답하는 경우)
+                        List<String> adTexts;
+                        try {
+                                adTexts = mapper.readValue(content, List.class);
+                        } catch (Exception e) {
+                                throw new RuntimeException("GPT 응답이 올바른 JSON 배열 형식이 아님:\n" + content);
+                        }
+
+                        System.out.println("✅ GPT 응답 문구들:");
+                        adTexts.forEach(System.out::println);
+
+                        return Map.of("adTexts", adTexts);
                 }
+
         }
 }

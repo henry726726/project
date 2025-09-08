@@ -20,7 +20,7 @@ public class AdInsightService {
     public void fetchAndStoreInsights(String adId, String accessToken) {
         // ✅ age, gender는 fields가 아니라 breakdowns로 요청해야 함
         String url = String.format(
-                "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency&access_token=%s",
+                "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency&date_preset=last_90d&access_token=%s",
                 adId, accessToken);
 
         try {
@@ -44,13 +44,13 @@ public class AdInsightService {
                 String age = node.path("age").isMissingNode() ? null : node.path("age").asText();
                 String gender = node.path("gender").isMissingNode() ? null : node.path("gender").asText();
 
-                int impressions = Integer.parseInt(node.get("impressions").asText("0"));
-                int clicks = Integer.parseInt(node.get("clicks").asText("0"));
-                BigDecimal spend = new BigDecimal(node.get("spend").asText("0"));
-                int reach = Integer.parseInt(node.get("reach").asText("0"));
-                BigDecimal cpc = new BigDecimal(node.get("cpc").asText("0"));
-                BigDecimal ctr = new BigDecimal(node.get("ctr").asText("0"));
-                BigDecimal frequency = new BigDecimal(node.get("frequency").asText("0"));
+                int impressions = node.path("impressions").asInt(0);
+                int clicks = node.path("clicks").asInt(0);
+                BigDecimal spend = new BigDecimal(node.path("spend").asText("0"));
+                int reach = node.path("reach").asInt(0);
+                BigDecimal cpc = new BigDecimal(node.path("cpc").asText("0"));
+                BigDecimal ctr = new BigDecimal(node.path("ctr").asText("0"));
+                BigDecimal frequency = new BigDecimal(node.path("frequency").asText("0"));
 
                 insight.setAge(age);
                 insight.setGender(gender);

@@ -21,6 +21,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import javax.imageio.ImageIO;
@@ -239,7 +240,9 @@ public class MetaAdCreatorService {
         }
     }
 
-    public void updateAd(Long adRunId, Long newContentId, String userEmail) {
+    public void updateAd(Long adRunId, Long newContentId, String userEmail, String newText, String newImageBase64) {
+
+        updateContentOnly(newContentId, newText, newImageBase64);
         // 1. DB에서 기존 집행 내역과 새 콘텐츠 조회
         AdRun adRun = adRunRepository.findById(adRunId)
                 .orElseThrow(() -> new RuntimeException("❌ 해당 광고 집행 내역을 찾을 수 없습니다"));
@@ -286,6 +289,18 @@ public class MetaAdCreatorService {
         adRun.setAdModifiedAt(OffsetDateTime.now(ZoneOffset.UTC)); // 광고가 실제 교체된 시점
         adRun.setStatus("UPDATED");
         adRunRepository.save(adRun);
+    }
+
+    @Transactional
+    public void updateContentOnly(Long contentId, String newText, String newImageBase64) {
+        AdContent content = adContentRepository.findById(contentId)
+                .orElseThrow(() -> new RuntimeException("❌ 해당 콘텐츠를 찾을 수 없습니다. ID=" + contentId));
+
+        content.setAdText(newText);
+        content.setGeneratedImageBase64(newImageBase64);
+        adContentRepository.save(content);
+
+        System.out.println("✅ DB에서 Content 업데이트 완료: contentId=" + contentId);
     }
 
     private String uploadImageToFacebook(String adAccountId, String accessToken, String imageBase64) {

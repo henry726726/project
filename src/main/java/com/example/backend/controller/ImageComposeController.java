@@ -37,6 +37,9 @@ public class ImageComposeController {
 
         // 1) 원본 이미지 읽기
         BufferedImage img = ImageIO.read(file.getInputStream());
+        if (img == null) {
+            throw new IOException("❌ 업로드된 파일을 이미지로 읽을 수 없습니다.");
+        }
         int w = img.getWidth(), h = img.getHeight();
 
         // 2) Graphics2D 설정
