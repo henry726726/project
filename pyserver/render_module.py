@@ -465,25 +465,74 @@ def main():
     print(f"✅ 저장 완료: {args.out}")
 
 
+def insert_logo(image_path, logo_path=None, layout_json=None):
+    """
+    이미지에 로고를 삽입하는 함수
+    
+    Args:
+        image_path (str): 로고를 삽입할 이미지 경로
+        logo_path (str, optional): 로고 이미지 경로
+        layout_json (dict, optional): 레이아웃 정보가 포함된 JSON
+    
+    Returns:
+        str: 최종 이미지 파일 경로
+    """
+    import uuid
+    
+    # 기본 로고 경로 설정 (없으면 건너뛰기)
+    if not logo_path:
+        # 기본 로고가 없으면 원본 이미지를 그대로 반환
+        return image_path
+    
+    # 출력 파일명 생성
+    output_filename = f"output_{uuid.uuid4()}.png"
+    output_path = os.path.join("outputs", output_filename)
+    os.makedirs("outputs", exist_ok=True)
+    
+    try:
+        # 이미지 로드
+        base = Image.open(image_path).convert("RGBA")
+        W, H = base.size
+        
+        # 로고가 있으면 삽입
+        if logo_path and os.path.exists(logo_path):
+            # 기본 로고 위치 (우상단)
+            logo_size = min(W, H) // 8  # 이미지 크기의 1/8
+            logo_x = W - logo_size - 20
+            logo_y = 20
+            
+            # 레이아웃 정보가 있으면 그에 따라 조정
+            if layout_json and isinstance(layout_json, dict):
+                layout = layout_json.get("layout", {})
+                graphics = layout.get("graphic_layout", [])
+                
+                # 로고 타입의 그래픽 요소 찾기
+                for g in graphics:
+                    if g.get("type", "").lower() == "logo":
+                        bbox = g.get("bbox")
+                        if isinstance(bbox, list) and len(bbox) == 4:
+                            # bbox를 픽셀 좌표로 변환
+                            x0, y0, x1, y1 = detect_and_to_px(bbox, W, H)
+                            place_logo(base, logo_path, (x0, y0, x1, y1))
+                            break
+                else:
+                    # 로고 레이아웃이 없으면 기본 위치에 삽입
+                    place_logo(base, logo_path, (logo_x, logo_y, logo_x + logo_size, logo_y + logo_size))
+            else:
+                # 레이아웃 정보가 없으면 기본 위치에 삽입
+                place_logo(base, logo_path, (logo_x, logo_y, logo_x + logo_size, logo_y + logo_size))
+        
+        # 최종 이미지 저장
+        base.convert("RGB").save(output_path, quality=95)
+        return output_path
+        
+    except Exception as e:
+        print(f"로고 삽입 중 오류 발생: {e}")
+        # 오류 발생 시 원본 이미지를 그대로 반환
+        return image_path
+
+
 if __name__ == "__main__":
     main()
 
 #리턴 값 = db 연동 
-
-# API 엔드포인트
-@app.post("/add_text_to_image")
-async def add_text_to_image_api(
-    image_file: UploadFile = Form(...),
-    text: str = Form(...),
-    layout: str = Form("auto")
-):
-    if not image_file or not text:
-        raise HTTPException(status_code=400, detail="이미지와 문구는 필수입니다.")
-    try:
-        image_bytes = await image_file.read()
-        # 수정: 새로운 레이아웃 옵션 전달
-        output_image_bytes = placer.place_text_on_image(image_bytes, text, layout)
-        img_base64 = base64.b64encode(output_image_bytes).decode("utf-8")
-        return {"image_base64": img_base64}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"이미지 처리 오류: {e}")    
