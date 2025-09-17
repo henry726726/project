@@ -1,46 +1,36 @@
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import FileResponse, JSONResponse
-import uuid
-import os
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
+import io
 
-from qwen_module import generate_prompt_from_qwen
-from nano_banana_api import generate_image_from_prompt
-from render_module import insert_logo
+# 분리해둔 모듈 import
+from qwen_module import generate_json_prompt
+from nano_banana_module import generate_image
+from render_module import add_logo_to_image
 
 app = FastAPI()
 
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "outputs"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-@app.get("/")
-async def root():
-    return {"status": "ok", "message": "pyserver is running"}
-
-@app.get("/healthz")
-async def healthz():
-    return {"status": "healthy"}
-
-@app.post("/generate")
-async def generate_image(product_name: str = Form(...), image: UploadFile = File(...)):
+@app.post("/process-image")
+async def process_image(image_file: UploadFile = File(...), product_name: str = "product"):
+    """
+    이미지와 제품명을 받아, Qwen을 이용해 JSON 프롬프트를 생성하고,
+    Nano Banana API로 이미지를 생성한 뒤, 로고를 삽입하여 반환합니다.
+    """
     try:
-        # 1. 이미지 저장
-        image_filename = f"{uuid.uuid4()}.png"
-        image_path = os.path.join(UPLOAD_FOLDER, image_filename)
-        with open(image_path, "wb") as f:
-            f.write(await image.read())
+        # 1. 파일에서 바이트 데이터 읽기
+        image_data = await image_file.read()
 
-        # 2. Qwen을 통해 프롬프트 생성
-        prompt_json = generate_prompt_from_qwen(image_path, product_name)
+        # 2. Qwen 모듈을 사용하여 JSON 프롬프트 생성
+        json_prompt = generate_json_prompt(image_data, product_name)
 
-        # 3. Nano Banana API에 프롬프트 전달 → 이미지 생성
-        generated_image_path = generate_image_from_prompt(prompt_json)
+        # 3. Nano Banana 모듈을 사용하여 이미지 생성
+        generated_image_data = generate_image(json_prompt)
 
-        # 4. Render 단계에서 로고 삽입
-        final_image_path = insert_logo(generated_image_path)
+        # 4. Render(로고 삽입) 모듈을 사용하여 로고 추가
+        final_image_data = add_logo_to_image(generated_image_data)
 
-        # 5. 최종 이미지 반환
-        return FileResponse(final_image_path, media_type="image/png")
+        # 5. 최종 이미지를 StreamingResponse로 반환
+        return StreamingResponse(io.BytesIO(final_image_data), media_type="image/png")
+    
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": f"/generate failed: {e}"})
+        # 오류 발생 시 HTTP 500 에러 반환
+        raise HTTPException(status_code=500, detail=f"처리 중 오류가 발생했습니다: {e}")

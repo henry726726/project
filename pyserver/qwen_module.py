@@ -3,9 +3,6 @@ import torch
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
 from PIL import Image
-import pymysql
-import pandas as pd
-from pymysql.cursors import DictCursor  # 이 줄 필요
 
 # -------------------------------------------------
 # 1) First-pass schema: product/background summary + layout JSON
@@ -536,160 +533,6 @@ def generate_bg_plan(model, processor, image_path, product_name, parsed, palette
             "objects": []
         }
 
-def generate_prompt_from_qwen(image_path, product_name, max_new_tokens=900, temperature=0.7, top_p=0.9):
-    """
-    Qwen VLM을 사용하여 이미지에서 제품 정보와 레이아웃을 분석하고 JSON을 생성합니다.
-    
-    Args:
-        image_path (str): 분석할 이미지 경로
-        product_name (str): 제품 이름 힌트
-        max_new_tokens (int): 최대 생성 토큰 수
-        temperature (float): 생성 온도
-        top_p (float): Top-p 샘플링 파라미터
-    
-    Returns:
-        dict: 분석된 제품 정보와 레이아웃이 포함된 JSON
-    """
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"이미지 경로를 찾을 수 없습니다: {image_path}")
-
-    try:
-        model_id = "Qwen/Qwen2.5-VL-7B-Instruct"
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            model_id, dtype="auto", device_map="auto"
-        )
-        processor = AutoProcessor.from_pretrained(model_id, use_fast=False)
-
-        user_text = f"[제품명 힌트] {product_name}\n{SCHEMA_TEXT}"
-        messages = [
-            {"role": "system", "content": [{"type": "text", "text": SYSTEM}]},
-            {"role": "user", "content": [
-                {"type": "image", "image": f"file://{image_path}"},
-                {"type": "text", "text": user_text}
-            ]}
-        ]
-
-        text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        image_inputs, video_inputs = process_vision_info(messages)
-        inputs = processor(text=[text], images=image_inputs, videos=video_inputs,
-                           padding=True, return_tensors="pt").to(model.device)
-
-        with torch.no_grad():
-            out_ids = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=True,
-                top_p=top_p,
-                temperature=temperature
-            )
-
-        gen_text = processor.batch_decode(
-            out_ids[:, inputs.input_ids.shape[1]:],
-            skip_special_tokens=True
-        )[0]
-
-        # First-pass: parse & refine
-        parsed = extract_json(gen_text)
-        parsed = normalize_if_pixels_layout(parsed, image_path)
-        parsed = postprocess_layout(parsed)
-        parsed = inject_fallback_boxes(parsed)
-        parsed = add_text_underlays(parsed)
-
-        # Second-pass: background prompt & objects
-        palette = extract_palette_hex(image_path, k=5)
-        bg_plan = generate_bg_plan(
-            model, processor, image_path, product_name, parsed, palette,
-            max_new_tokens=max(1000, max_new_tokens),
-            top_p=top_p, temperature=temperature
-        )
-        if "background" not in parsed or not isinstance(parsed["background"], dict):
-            parsed["background"] = {}
-            parsed["background"].update({
-                "prompt": bg_plan.get("background_prompt", ""),
-                "negative_prompt": bg_plan.get("negative_prompt", ""),
-                "camera": bg_plan.get("camera", parsed.get("background", {}).get("camera", {})),
-                "lighting": bg_plan.get("lighting", parsed.get("background", {}).get("lighting", {})),
-                "palette": bg_plan.get("palette", palette)
-            })
-        parsed.setdefault("background_objects", bg_plan.get("objects", parsed.get("background_objects", [])))
-
-    except Exception as e:
-        # Lightweight fallback so the pipeline can continue
-        palette = extract_palette_hex(image_path, k=5)
-        parsed = {
-            "product": {"type": product_name or "product", "material": "", "design": "", "features": ""},
-            "background": {
-                "prompt": (
-                    f"Clean, minimal studio background for '{product_name}'. Soft front lighting, no clutter. "
-                    f"Respect free space for headline/subhead. Neutral tones, gentle gradients."
-                ),
-                "negative_prompt": _build_negative_prompt_default(),
-                "camera": {"angle": "eye-level", "distance": "medium"},
-                "lighting": {"type": "soft", "direction": "front"},
-                "palette": palette
-            },
-            "layout": {
-                "subject_layout": {"center": [0.5, 0.55], "ratio": [0.38, 0.38]},
-                "nongraphic_layout": [
-                    {"type": "headline", "bbox": [0.06, 0.06, 0.88, 0.12], "confidence": 0.5},
-                    {"type": "headline", "bbox": [0.06, 0.82, 0.88, 0.12], "confidence": 0.5}
-                ],
-                "graphic_layout": [
-                    {"type": "logo", "content": "", "bbox": [0.74, 0.06, 0.20, 0.10], "confidence": 0.5}
-                ]
-            }
-        }
-        parsed = add_text_underlays(parsed)
-
-    # DB에 저장 (베스트 에포트)
-    try:
-        db_config = {
-            'host': 'database-1.c580mikw8lqh.ap-northeast-2.rds.amazonaws.com',
-            'user': 'hongik1',
-            'password': 'hongik1234',
-            'database': 'aws_rds',
-            'port': 3306
-        }
-        save_to_db(parsed, db_config, 'ad_contents')
-    except Exception:
-        pass
-
-    return parsed
-
-
-def save_to_db(data_to_save, db_config, table_name='ad_outputs'):
-    """
-    생성된 JSON 데이터를 데이터베이스 테이블에 저장합니다.
-    
-    Args:
-        data_to_save (dict): VLM이 생성한 JSON 데이터.
-        db_config (dict): 데이터베이스 접속 정보.
-        table_name (str): 데이터를 저장할 테이블 이름.
-    """
-    conn = None
-    try:
-        conn = pymysql.connect(**db_config, cursorclass=DictCursor)
-        with conn.cursor() as cursor:
-            # 테이블에 데이터를 삽입하는 SQL 쿼리
-            # 예시로 'product_info'와 'layout_info' 컬럼에 JSON 문자열을 저장한다고 가정합니다.
-            sql = f"INSERT INTO {table_name} (product_info, layout_info) VALUES (%s, %s)"
-            
-            # JSON 데이터를 문자열로 변환
-            product_info_json = json.dumps(data_to_save.get('product', {}), ensure_ascii=False)
-            layout_info_json = json.dumps(data_to_save.get('layout', {}), ensure_ascii=False)
-            
-            cursor.execute(sql, (product_info_json, layout_info_json))
-        
-        conn.commit()
-        print(f"[DB 저장 완료] {table_name} 테이블에 데이터가 성공적으로 저장되었습니다.")
-        
-    except pymysql.MySQLError as e:
-        print(f"[DB 오류] 데이터베이스에 데이터를 저장하는 중 오류 발생: {e}", file=sys.stderr)
-        
-    finally:
-        if conn:
-            conn.close()
-
 # -------------------------------------------------
 # Main
 # -------------------------------------------------
@@ -764,7 +607,7 @@ def main():
         )
         if "background" not in parsed or not isinstance(parsed["background"], dict):
             parsed["background"] = {}
-            parsed["background"].update({
+        parsed["background"].update({
             "prompt": bg_plan.get("background_prompt", ""),
             "negative_prompt": bg_plan.get("negative_prompt", ""),
             "camera": bg_plan.get("camera", parsed.get("background", {}).get("camera", {})),
@@ -773,26 +616,17 @@ def main():
         })
         parsed.setdefault("background_objects", bg_plan.get("objects", parsed.get("background_objects", [])))
 
-    # 최종 결과 출력 또는 파일로 저장
+    # Ensure long/filled prompts regardless of 2nd-pass outcome
+    context_for_bg = summarize_layout_for_bg(parsed)
+    parsed = ensure_background_prompts(parsed, product_name, context_for_bg, min_chars=args.bg_min_chars)
+
     if args.save:
         with open(args.save, "w", encoding="utf-8") as f:
             json.dump(parsed, f, ensure_ascii=False, indent=2)
         print(f"[저장 완료] {args.save}")
     else:
         print(json.dumps(parsed, ensure_ascii=False, indent=2))
-        
-    # ⭐ 추가된 부분: DB에 저장
-    db_config = {
-        'host': 'database-1.c580mikw8lqh.ap-northeast-2.rds.amazonaws.com',
-        'user': 'hongik1',
-        'password': 'hongik1234',
-        'database': 'aws_rds',
-        'port': 3306
-    }
-    
-    save_to_db(parsed, db_config, 'ad_contents') # ⭐ 여기에 저장할 테이블 이름을 지정하세요.
 
 
 if __name__ == "__main__":
     main()
-
