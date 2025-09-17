@@ -469,4 +469,21 @@ if __name__ == "__main__":
     main()
 
 #리턴 값 = db 연동 
-    
+
+# API 엔드포인트
+@app.post("/add_text_to_image")
+async def add_text_to_image_api(
+    image_file: UploadFile = Form(...),
+    text: str = Form(...),
+    layout: str = Form("auto")
+):
+    if not image_file or not text:
+        raise HTTPException(status_code=400, detail="이미지와 문구는 필수입니다.")
+    try:
+        image_bytes = await image_file.read()
+        # 수정: 새로운 레이아웃 옵션 전달
+        output_image_bytes = placer.place_text_on_image(image_bytes, text, layout)
+        img_base64 = base64.b64encode(output_image_bytes).decode("utf-8")
+        return {"image_base64": img_base64}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 처리 오류: {e}")    
