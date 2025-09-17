@@ -14,7 +14,10 @@ from typing import List
 from google import genai
 from google.genai.types import GenerateContentConfig, Modality
 
-#DB에서 json 값 불러오기 
+'''
+FastAPI 엔드포인트에서 요청을 받음
+-> DB에서 받아온 json 파일을 이용해서 나노 바나나 이미지 생성 
+'''
 
 # ----------------------------
 # 이미지 리사이즈 (최대 변 기준, 비율 유지)
@@ -238,3 +241,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+생성된 이미지를 파일 또는 바이너리 형태로 처리
+이미지 데이터를 DB에 저장 (예: PostgreSQL, MongoDB, 등)
+성공 메시지 반환
+'''
