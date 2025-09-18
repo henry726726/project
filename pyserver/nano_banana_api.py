@@ -44,6 +44,8 @@ async def generate_banana(
 
     return FileResponse(out_file, media_type="image/png", filename="banana_generated.png")
 
+'''
 @app.get("/")
 async def root():
     return {"message": "Nano Banana API 서버가 정상 작동 중입니다!"}
+'''
