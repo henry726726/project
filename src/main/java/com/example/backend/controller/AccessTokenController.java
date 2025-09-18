@@ -60,4 +60,13 @@ public class AccessTokenController {
 
         return ResponseEntity.ok("✅ 액세스토큰 저장 완료");
     }
+
+    @GetMapping("/access-token/{userId}")
+public ResponseEntity<String> getAccessToken(@PathVariable Long userId) {
+    return accessTokenRepository.findByUserId(userId)
+            .map(AccessTokenEntity::getAccessToken)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("❌ 해당 유저의 액세스토큰이 없습니다."));
+}
 }

@@ -2,20 +2,50 @@ package com.example.backend.service;
 
 import com.example.backend.entity.AdInsight;
 import com.example.backend.repository.AdInsightRepository;
+import com.example.backend.repository.AdRunRepository;
+import com.example.backend.repository.AccessTokenRepository;
+import com.example.backend.entity.AdRun;
+import com.example.backend.entity.AccessTokenEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+
 @Service
+@RequiredArgsConstructor
 public class AdInsightService {
 
-    @Autowired
-    private AdInsightRepository insightRepository;
+    
+    private final AdInsightRepository insightRepository;
+    private final AdRunRepository adRunRepository;
+    private final AccessTokenRepository accessTokenRepository;
+
+    public void fetchAndStoreInsightsByAdRunId(Long adRunId) {
+        // 1. 광고 집행 가져오기
+        AdRun adRun = adRunRepository.findById(adRunId)
+                .orElseThrow(() -> new RuntimeException("AdRun not found"));
+
+        // 2. User → AccessToken 찾기
+        Long userId = adRun.getUser().getId();
+        String accessToken = accessTokenRepository.findByUserId(userId)
+                .map(AccessTokenEntity::getAccessToken)
+                .orElseThrow(() -> new RuntimeException("AccessToken not found for userId=" + userId));
+
+        // 3. Facebook Graph API 호출
+        String adId = adRun.getAdId();
+        fetchAndStoreInsights(adId, accessToken);
+    }
+
+    public AdInsight getLatestInsight(String adId) {
+    return insightRepository.findTopByAdIdOrderByDateDesc(adId)
+            .orElseThrow(() -> new RuntimeException("No insights found for adId=" + adId));
+}
 
     public void fetchAndStoreInsights(String adId, String accessToken) {
         // ✅ age, gender는 fields가 아니라 breakdowns로 요청해야 함

@@ -35,6 +35,7 @@ public class MetaAdRunController {
                 return adRuns.stream()
                                 .map(adRun -> new AdRunResponse(
                                                 adRun.getId(),
+                                                adRun.getAdId(),
                                                 adRun.getStatus(),
                                                 adRun.getAdModifiedAt(),
                                                 adRun.getContent().getId(),
@@ -44,8 +45,8 @@ public class MetaAdRunController {
                                                 adRun.getContent().getKeyword(),
                                                 adRun.getContent().getDuration(),
                                                 adRun.getContent().getAdText(),
-                                                adRun.getContent().getGeneratedImageBase64(),
                                                 adRun.getContent().getOriginalImageBase64(), // ✅ 포함
+                                                adRun.getContent().getGeneratedImageBase64(),
                                                 adRun.getUser().getEmail()))
                                 .toList();
         }

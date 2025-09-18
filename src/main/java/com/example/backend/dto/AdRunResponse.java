@@ -11,6 +11,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class AdRunResponse {
     private Long adRunId;
+    private String adId;
     private String status;
     private OffsetDateTime adModifiedAt;
 
