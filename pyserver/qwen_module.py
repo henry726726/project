@@ -501,7 +501,7 @@ class GenerateJSON:
         return parsed
 
 
-generator = GenerateJSON()  # 모델 및 프로세서 초기화 (한번만)
+generator = GenerateJSON()  
 
 @app.post("/generate_json/")
 async def generate_json_endpoint(
