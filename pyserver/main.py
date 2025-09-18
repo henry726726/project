@@ -3,11 +3,31 @@ from fastapi.responses import StreamingResponse
 import io
 
 # 분리해둔 모듈 import
-from qwen_module import generate_json_prompt
-from nano_banana_module import generate_image
-from render_module import add_logo_to_image
+import qwen_module 
+import nano_banana_module 
+import render_module 
+
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
+
+@app.post("/upload/")
+async def upload_image(
+    image: UploadFile = File(...),
+    product_name: str = Form(...)
+):
+    # 파일 이름과 상품명 출력 (디버깅용)
+    print(f"Received file: {image.filename}")
+    print(f"Product name: {product_name}")
+
+    # 이미지 처리 및 결과 생성 코드 여기에 추가
+    # 예: result = generate_json_prompt(...)
+
+    result = {"message": f"Received {image.filename} for product {product_name}"}
+
+    return JSONResponse(content=result)
+
 
 @app.post("/process-image")
 async def process_image(image_file: UploadFile = File(...), product_name: str = "product"):
@@ -20,13 +40,13 @@ async def process_image(image_file: UploadFile = File(...), product_name: str = 
         image_data = await image_file.read()
 
         # 2. Qwen 모듈을 사용하여 JSON 프롬프트 생성
-        json_prompt = generate_json_prompt(image_data, product_name)
+        json_prompt = qwen_module(image_data, product_name)
 
         # 3. Nano Banana 모듈을 사용하여 이미지 생성
-        generated_image_data = generate_image(json_prompt)
+        generated_image_data = nano_banana_module(json_prompt)
 
         # 4. Render(로고 삽입) 모듈을 사용하여 로고 추가
-        final_image_data = add_logo_to_image(generated_image_data)
+        final_image_data = render_module(generated_image_data)
 
         # 5. 최종 이미지를 StreamingResponse로 반환
         return StreamingResponse(io.BytesIO(final_image_data), media_type="image/png")
