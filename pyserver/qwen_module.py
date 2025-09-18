@@ -535,4 +535,4 @@ async def generate_json_endpoint(
 
 if __name__ == "__main__":
     # 서버 실행
-    uvicorn.run("fastapi_server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("qwen_module:app", host="0.0.0.0", port=8000, reload=True)
