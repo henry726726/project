@@ -4,7 +4,7 @@ import io
 
 # 분리해둔 모듈 import
 import qwen_module 
-import nano_banana_module 
+import pyserver.nano_banana_api as nano_banana_api 
 import render_module 
 
 from fastapi import FastAPI, UploadFile, File, Form
@@ -43,7 +43,7 @@ async def process_image(image_file: UploadFile = File(...), product_name: str = 
         json_prompt = qwen_module(image_data, product_name)
 
         # 3. Nano Banana 모듈을 사용하여 이미지 생성
-        generated_image_data = nano_banana_module(json_prompt)
+        generated_image_data = nano_banana_api(json_prompt)
 
         # 4. Render(로고 삽입) 모듈을 사용하여 로고 추가
         final_image_data = render_module(generated_image_data)
