@@ -7,22 +7,27 @@ from concurrent.futures import ThreadPoolExecutor
 import os
 import base64
 import json
+import io
+import pymysql
 
-# 사용자 제공 qwen_module.py 파일
-from qwen_module import QwenProcessor
-# 이전에 리팩토링해 드린 nanobanana_module.py 파일
-from nanobanana_module import GeminiImageGenerator
-# 이전에 리팩토링해 드린 mysql_module.py 파일
+# 기존 모듈 임포트
 from mysql_module import MySQLLoader
+from qwen_module import QwenProcessor
+from nanobanana_module import GeminiImageGenerator
+
+# 새로 추가된 텍스트 렌더링 모듈 임포트
+from ad_text_render_module import AdTextRenderer
 
 # 모델 및 DB 로더 초기화
 try:
     qwen_processor = QwenProcessor()
     gemini_generator = GeminiImageGenerator()
+    ad_text_renderer = AdTextRenderer() # 폰트 경로는 필요에 따라 수정
 except Exception as e:
-    print(f"Failed to initialize models: {e}")
+    print(f"Failed to initialize modules: {e}")
     qwen_processor = None
     gemini_generator = None
+    ad_text_renderer = None
 
 app = FastAPI()
 
@@ -36,72 +41,86 @@ executor = ThreadPoolExecutor(max_workers=5)
 
 @app.on_event("startup")
 async def startup_event():
-    # 서버 시작 시 환경 변수 확인
     required_vars = ["MYSQL_HOST", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_DB",
                      "GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION", "GOOGLE_GENAI_USE_VERTEXAI"]
     if not all(os.environ.get(var) for var in required_vars):
         print("Warning: Missing one or more required environment variables.")
 
-@app.post("/generate-final-image")
-async def generate_final_image(request: AdContentRequest):
+@app.post("/generate-ad-with-text")
+async def generate_ad_with_text(request: AdContentRequest):
     """
-    ID를 받아 MySQL에서 데이터를 가져와 Qwen과 Gemini로 순차적으로 처리하고
-    결과를 DB에 저장하는 API.
+    ID를 받아 DB에서 모든 정보를 로드하고, Qwen, Gemini, Text Renderer를
+    순차적으로 실행하여 최종 광고 이미지를 생성하고 DB에 저장하는 API.
     """
-    if qwen_processor is None or gemini_generator is None:
-        raise HTTPException(status_code=503, detail="Required AI models are not available.")
+    if not all([qwen_processor, gemini_generator, ad_text_renderer]):
+        raise HTTPException(status_code=503, detail="Required modules are not available.")
 
-    # 1. MySQL에서 원본 데이터 로드 (원본 이미지, 제품명)
+    # 1. MySQL에서 데이터 로드 (원본 이미지, 제품명, Qwen/Gemini 결과, 로고 이미지 등)
     try:
         db_data = await asyncio.get_event_loop().run_in_executor(
             executor,
-            lambda: mysql_loader.get_ad_content_sync(request.ad_content_id)
+            lambda: mysql_loader.get_ad_content_for_rendering(request.ad_content_id)
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
 
-    if not db_data or not db_data.get("image_base64"):
-        raise HTTPException(status_code=404, detail="Required data (image) is missing for this ID.")
+    if not db_data:
+        raise HTTPException(status_code=404, detail="Ad content not found or is incomplete.")
 
-    image_base64 = db_data["image_base64"]
-    product_name = db_data.get("product_name") or "Product" # 제품명이 없는 경우 기본값 설정
+    original_image_base64 = db_data.get("original_image_base64")
+    product_name = db_data.get("product_name") or "Product"
+    final_result_json = db_data.get("final_result_json")
+    logo_image_base64 = db_data.get("logo_image_base64")
+
+    # 필요한 데이터가 없으면 오류 처리
+    if not original_image_base64 or not final_result_json:
+        raise HTTPException(status_code=400, detail="Missing required data from database.")
 
     try:
-        image_bytes = base64.b64decode(image_base64)
-    except (TypeError, ValueError) as e:
-        raise HTTPException(status_code=400, detail=f"Invalid Base64 string: {str(e)}")
-
-    # 2. QwenProcessor로 이미지 분석 및 배경 프롬프트 생성 (2단계 로직 포함)
-    try:
-        # qwen_module.py의 process_image는 비동기 함수이므로 await로 호출
-        qwen_analysis_result = await qwen_processor.process_image(image_bytes, product_name)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Qwen model processing failed: {str(e)}")
+        # DB에 저장된 final_result JSON (Qwen + Gemini 결과) 불러오기
+        processed_data = json.loads(final_result_json)
+        # Gemini가 생성한 배경 이미지를 Base64에서 바이트로 변환
+        gemini_image_base64 = processed_data.get("final_image_base64")
+        if not gemini_image_base64:
+             raise HTTPException(status_code=400, detail="Gemini image is missing in DB result.")
+        gemini_image_bytes = base64.b64decode(gemini_image_base64)
         
-    # 3. Gemini 모델로 최종 이미지 생성 (Qwen의 상세 분석 결과를 그대로 사용)
+        qwen_layout = processed_data.get("qwen_analysis", {})
+
+        # 로고 이미지 변환 (있을 경우)
+        logo_image_bytes = base64.b64decode(logo_image_base64) if logo_image_base64 else None
+
+    except (TypeError, ValueError, json.JSONDecodeError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid data format from DB: {str(e)}")
+
+    # 2. Text Renderer로 텍스트와 로고 합성
     try:
-        generated_image_bytes = await asyncio.get_event_loop().run_in_executor(
+        copy_map = {"headline#0": product_name} # 예시로 제품명을 첫 텍스트로 설정
+        
+        final_ad_bytes = await asyncio.get_event_loop().run_in_executor(
             executor,
-            lambda: gemini_generator.generate_image(image_bytes, qwen_analysis_result)
+            lambda: ad_text_renderer.render_ad(
+                image_data=gemini_image_bytes,
+                layout_json=qwen_layout,
+                copy_map=copy_map,
+                logo_data=logo_image_bytes,
+                params={"target_ratio": 0.82, "line_spacing": 1.02, "stroke": 1}
+            )
+        )
+        final_ad_base64 = base64.b64encode(final_ad_bytes).decode('utf-8')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Text rendering failed: {str(e)}")
+
+    # 3. 최종 결과 이미지 업데이트
+    try:
+        db_update_success = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: mysql_loader.update_final_ad_sync(request.ad_content_id, final_ad_base64)
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gemini image generation failed: {str(e)}")
-
-    generated_image_base64 = base64.b64encode(generated_image_bytes).decode('utf-8')
-
-    # 4. 모든 분석 및 생성 결과를 JSON 객체로 통합
-    final_result = {
-        "qwen_analysis": qwen_analysis_result,
-        "final_image_base64": generated_image_base64
-    }
-
-    # 5. 최종 결과를 MySQL RDS에 저장
-    db_update_success = await asyncio.get_event_loop().run_in_executor(
-        executor,
-        lambda: mysql_loader.update_ad_content_result_sync(request.ad_content_id, final_result)
-    )
+        raise HTTPException(status_code=500, detail=f"Failed to update final image in DB: {str(e)}")
 
     if not db_update_success:
-        return {"status": "Processing successful, but DB update failed.", "result": final_result}
+        return {"status": "Processing successful, but DB update failed.", "result": {"final_ad_base64": final_ad_base64}}
 
-    return {"status": "All stages successful. Results saved to DB.", "result": final_result}
+    return {"status": "All stages successful. Final ad saved to DB.", "result": {"final_ad_base64": final_ad_base64}}
