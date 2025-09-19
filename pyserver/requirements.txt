@@ -9,3 +9,9 @@ torchvision
 torchaudio
 opencv-python
 Pillow
+
+#추가 
+pymysql
+pydantic
+python-dotenv
+qwen-vl-utils==0.0.4  # 또는 필요한 버전
