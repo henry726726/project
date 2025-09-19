@@ -190,27 +190,45 @@ def load_copy_map(copy_data: dict) -> Dict[str,str]:
         return {}
     return copy_data
 
-CANDIDATE_FONTS = [
-    r"C:\\Windows\\Fonts\\malgunbd.ttf",
-    r"C:\\Windows\\Fonts\\malgun.ttf",
-    r"C:\\Windows\\Fonts\\NanumGothic.ttf",
-    os.path.expandvars(r"%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts\\NotoSansKR-Bold.otf"),
-    os.path.expandvars(r"%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts\\NotoSansKR-Regular.otf"),
-]
+# 폰트 디렉토리 경로를 명시적으로 설정합니다.
+FONT_DIR = "/Users/jieunchoi/Documents/GitHub/project/pyserver/Noto_Sans_KR"
 
 def resolve_font_path(requested_path: Optional[str]) -> str:
+    """
+    주어진 폰트 경로를 확인하거나, 지정된 FONT_DIR에서 폰트 파일을 찾습니다.
+    """
     if requested_path and os.path.exists(requested_path):
+        print(f"✅ 지정된 폰트 경로 로드 성공: {requested_path}")
         return requested_path
-    for pattern in [
-        r"C:\\Windows\\Fonts\\*Noto*Sans*KR*Bold*.otf",
-        r"C:\\Windows\\Fonts\\*Noto*Sans*KR*.ttf",
-        os.path.expandvars(r"%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts\\*Noto*Sans*KR*Bold*.otf"),
-        os.path.expandvars(r"%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts\\*Noto*Sans*KR*.ttf"),
-    ]:
-        hits = glob.glob(pattern)
-        if hits: return hits[0]
-    for p in CANDIDATE_FONTS:
-        if p and os.path.exists(p): return p
+
+    # FONT_DIR 내에서 폰트 파일들을 찾습니다.
+    font_files = glob.glob(os.path.join(FONT_DIR, "*.otf")) + \
+                 glob.glob(os.path.join(FONT_DIR, "*.ttf"))
+
+    # 'Bold' 폰트를 우선적으로 찾습니다.
+    for file_path in font_files:
+        if "Bold" in os.path.basename(file_path):
+            print(f"✅ 'Bold' 폰트 로드 성공: {file_path}")
+            return file_path
+            
+    # 'Bold' 폰트가 없으면 'Regular' 폰트를 찾습니다.
+    for file_path in font_files:
+        if "Regular" in os.path.basename(file_path):
+            print(f"✅ 'Regular' 폰트 로드 성공: {file_path}")
+            return file_path
+
+    # 위 경로에서도 폰트를 찾지 못할 경우 기본 시스템 폰트들을 시도합니다.
+    CANDIDATE_FONTS = [
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+    ]
+    
+    for path in CANDIDATE_FONTS:
+        if os.path.exists(path):
+            print(f"✅ 기본 시스템 폰트 로드 성공: {path}")
+            return path
+            
     raise FileNotFoundError("한국어 폰트 파일을 찾을 수 없습니다. 적절한 경로를 지정하거나 폰트 파일을 시스템에 설치해주세요.")
 
 # -----------------------------
@@ -222,7 +240,6 @@ class AdTextRenderer:
         try:
             self.font_path = resolve_font_path(font_path)
             _ = ImageFont.truetype(self.font_path, 18)
-            print(f"✅ 한글 폰트 로드 성공: {self.font_path}")
         except FileNotFoundError as e:
             print(f"⛔ 한글 폰트 로드 실패: {e}")
             self.font_path = None
