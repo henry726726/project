@@ -50,6 +50,7 @@ public class SecurityConfig {
                                                                 "/api/register",
                                                                 "/meta/**",
                                                                 "/api/generate",
+                                                                "/api/report/pdf",
                                                                 "/", "/login**", "/error**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

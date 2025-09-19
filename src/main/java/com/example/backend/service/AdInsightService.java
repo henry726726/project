@@ -18,9 +18,9 @@ public class AdInsightService {
     private AdInsightRepository insightRepository;
 
     public void fetchAndStoreInsights(String adId, String accessToken) {
-        // ✅ age, gender는 fields가 아니라 breakdowns로 요청해야 함
+        // age, gender는 breakdowns로 요청해야 한다는 점 주의
         String url = String.format(
-                "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency&date_preset=last_90d&access_token=%s",
+                "https://graph.facebook.com/v20.0/%s/insights?fields=impressions,clicks,spend,reach,cpc,ctr,frequency&date_preset=last_90d&breakdowns=age,gender&access_token=%s",
                 adId, accessToken);
 
         try {
@@ -40,7 +40,6 @@ public class AdInsightService {
                 AdInsight insight = new AdInsight();
                 insight.setAdId(adId);
 
-                // 안전하게 값 추출
                 String age = node.path("age").isMissingNode() ? null : node.path("age").asText();
                 String gender = node.path("gender").isMissingNode() ? null : node.path("gender").asText();
 
@@ -63,8 +62,12 @@ public class AdInsightService {
                 insight.setFrequency(frequency);
                 insight.setDate(LocalDate.now());
 
-                System.out.println("🧾 저장 데이터: " + insight);
-                insightRepository.save(insight);
+                // 중복 데이터 저장 방지: 동일한 광고ID와 날짜 데이터가 있으면 저장하지 않음
+                if (!insightRepository.existsByAdIdAndDate(insight.getAdId(), insight.getDate())) {
+                    insightRepository.save(insight);
+                } else {
+                    System.out.println("⚠️ 중복 데이터 발견, 저장하지 않음: " + insight);
+                }
             }
 
             System.out.println("✅ 성과 데이터 저장 완료");

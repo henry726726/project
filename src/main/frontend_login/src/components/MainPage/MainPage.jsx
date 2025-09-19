@@ -1,5 +1,3 @@
-// src/components/MainPage/MainPage.jsx (단 한 글자도 생략 없이, 전체를 대체하세요!)
-
 import React, { useState, useEffect } from 'react';
 import Header from '../common/Header'; /* Header 컴포넌트 임포트 */
 import Footer from '../common/Footer'; /* Footer 컴포넌트 임포트 */
@@ -74,6 +72,7 @@ function MainPage({ userData, onLogout, isLoggedIn }) { // onShowLogin prop은 �
     cursor: 'pointer', /* 마우스 오버 시 포인터 변경 */
     transition: 'background-color 0.2s ease, color 0.2s ease', /* 색상 변화 애니메이션 */
     minWidth: '150px', /* 버튼의 최소 너비 지정 (너무 좁아지는 것 방지) */
+    whiteSpace: 'nowrap', // 텍스트 줄바꿈 방지
   };
 
   /* 현재 활성화된 메뉴 버튼의 스타일 (MainPage에서는 activeComponent 상태를 사용하지 않으므로, 이 스타일은 더 이상 필요 없습니다.) */
@@ -131,24 +130,29 @@ function MainPage({ userData, onLogout, isLoggedIn }) { // onShowLogin prop은 �
         </button>
       </nav>
 
+      {/* 🔴 여기가 바로 마이페이지 버튼이 추가된 두 번째 nav 영역입니다! */}
       <nav style={{
-  display: 'flex',
-  justifyContent: 'space-around',
-  gap: '10px',
-  padding: '15px 20px',
-  backgroundColor: '#f8f9fa',
-  borderBottom: '1px solid #dee2e6'
-}}>
-  <button onClick={() => handleMenuClick('/save-access-token')} style={menuButtonStyle}>
-    🔑 액세스토큰 저장
-  </button>
-  <button onClick={() => handleMenuClick('/save-ad-accounts')} style={menuButtonStyle}>
-    📥 광고 계정 저장
-  </button>
-  <button onClick={() => handleMenuClick('/sync-ad-info')} style={menuButtonStyle}>
-    📊 광고 동기화
-  </button>
-</nav>
+        display: 'flex',
+        justifyContent: 'space-around',
+        gap: '10px',
+        padding: '15px 20px',
+        backgroundColor: '#f8f9fa',
+        borderBottom: '1px solid #dee2e6'
+      }}>
+        <button onClick={() => handleMenuClick('/save-access-token')} style={menuButtonStyle}>
+          🔑 액세스토큰 저장
+        </button>
+        <button onClick={() => handleMenuClick('/save-ad-accounts')} style={menuButtonStyle}>
+          📥 광고 계정 저장
+        </button>
+        <button onClick={() => handleMenuClick('/sync-ad-info')} style={menuButtonStyle}>
+          📊 광고 동기화
+        </button>
+        {/* 🔴 여기에 '👤 내 정보 (MyPage)' 버튼이 추가되었습니다! 🔴 */}
+        <button onClick={() => handleMenuClick('/mypage')} style={menuButtonStyle}>
+          👤 내 정보 (MyPage)
+        </button>
+      </nav>
 
       {/* 활성 컴포넌트 렌더링 영역 (MainPage는 더 이상 다른 기능 컴포넌트들을 직접 렌더링하지 않습니다) */}
       <main style={{ flex: 1, padding: 20, backgroundColor: '#f0f2f5', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

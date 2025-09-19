@@ -133,6 +133,46 @@ const MyPage = ({ userData, onLogout }) => {
         }
     };
 
+    // 🔴 PDF 리포트 생성 버튼 클릭 이벤트 핸들러 추가!
+    const handleGeneratePdf = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const apiUrl = process.env.REACT_APP_API_URL || '';
+            const response = await fetch(`${apiUrl}/api/report/pdf`, {
+                method: 'GET',
+                credentials: 'include', // 인증이 필요하면 유지
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`PDF 생성 실패: ${response.status} - ${errorText}`);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            // 새 탭에서 PDF 열기 (기본 동작)
+            window.open(url, '_blank');
+
+            // 만약 바로 다운로드하고 싶으면 아래 주석 해제 (새 탭에서 열리지 않고 바로 다운로드)
+            /*
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Ad_Performance_Report.pdf';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            */
+
+        } catch (err) {
+            console.error('PDF 생성 중 오류:', err); // 디버깅을 위해 콘솔에 에러 출력
+            setError('PDF 생성 중 오류가 발생했습니다: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className='mypage-container'>
             <div className="mypage-header">
@@ -226,6 +266,24 @@ const MyPage = ({ userData, onLogout }) => {
                         <div className="action-btn edit-btn" onClick={handleEdit}>
                             Edit Profile
                         </div>
+                        {/* 🔴 PDF 리포트 생성 버튼 추가된 부분! */}
+                        <button 
+                            onClick={handleGeneratePdf}
+                            disabled={loading}
+                            style={{
+                                marginLeft: '10px', // 기존 버튼과의 간격 조절
+                                padding: '8px 16px',
+                                backgroundColor: '#4CAF50', // 녹색 계열 (예시)
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                fontWeight: 'bold',
+                                opacity: loading ? 0.7 : 1, // 로딩 중일 때 투명도 조절
+                            }}
+                        >
+                            {loading ? '생성 중...' : 'PDF 리포트 생성'}
+                        </button>
                         <div className="action-btn logout-btn" onClick={handleLogout}>
                             Logout
                         </div>
@@ -248,4 +306,4 @@ const MyPage = ({ userData, onLogout }) => {
     );
 };
 
-export default MyPage 
+export default MyPage;
