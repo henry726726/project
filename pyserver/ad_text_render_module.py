@@ -191,7 +191,7 @@ def load_copy_map(copy_data: dict) -> Dict[str,str]:
     return copy_data
 
 # 폰트 디렉토리 경로를 명시적으로 설정합니다.
-FONT_DIR = "/Users/jieunchoi/Documents/GitHub/project/pyserver/Noto_Sans_KR"
+FONT_DIR = "C:/Users/qkddl/Documents/GitHub/project/pyserver/Noto_Sans_KR/static"
 
 def resolve_font_path(requested_path: Optional[str]) -> str:
     """
