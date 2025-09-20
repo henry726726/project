@@ -13,7 +13,7 @@ uvicorn compose_service:app --host 0.0.0.0 --port 8010 --reload
 
 
 
-# 처음 시작시 
+# 처음 시작시
 conda create -n qwen python=3.10 -y
 conda activate qwen
 
@@ -51,7 +51,7 @@ python qwen25_vl_layout_hybrid.py --image .\sample_ad.jpg --product_name "실버
 
 
 
-$env:GOOGLE_API_KEY = AIzaSyDHLy5RDLf0tzbEeezIWke7gqCJqSrM4jo
+$env:GOOGLE_API_KEY =
 
 
 
@@ -81,3 +81,4 @@ python nano_banana_generate.py `
    --out final_ad2.png `
    --skip_layout_underlays `
    --stroke 2
+```
