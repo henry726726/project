@@ -14,21 +14,33 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.Collections;
 
 import javax.imageio.ImageIO;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.example.backend.service.ImageGenerationService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/images")
+@RequiredArgsConstructor
 public class ImageComposeController {
+
+    private final ImageGenerationService imageGenerationService;
 
     @PostMapping("/compose")
     public ResponseEntity<byte[]> composeImage(
@@ -112,4 +124,60 @@ public class ImageComposeController {
                 .contentType(MediaType.IMAGE_PNG)
                 .body(baos.toByteArray()); // 바이트 배열로 이미지 데이터 반환
     }
+
+
+
+    // 새로 추가하는 프록시 엔드포인트 (기존 것은 손대지 않음)
+    @PostMapping(value = "/compose", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> composeProxy(
+            // 파일: image 또는 image_file 중 아무거나
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @RequestPart(value = "image_file", required = false) MultipartFile imageFile,
+
+            @RequestPart(value = "product", required = false) String product,
+            @RequestPart(value = "text", required = false) String text,
+
+            // 텍스트 파라미터들 — 기존/신규 이름 모두 허용
+            @RequestPart(value = "productName", required = false) String productName,
+            @RequestPart(value = "product_name", required = false) String product_name,
+
+            @RequestPart(value = "headline", required = false) String headline,
+            @RequestPart(value = "caption", required = false) String caption,
+            
+
+            @RequestPart(value = "logoPath", required = false) String logoPath,
+            @RequestPart(value = "logo_path", required = false) String logo_path,
+
+            @RequestPart(value = "fontKor", required = false) String fontKor,
+            @RequestPart(value = "font_kor", required = false) String font_kor
+    ) {
+        // 1) 이름 정규화 (기존 명칭을 우선 사용하고, 없으면 신규 키로 대체)
+        MultipartFile resolvedImage = (image != null) ? image : imageFile;
+        if (resolvedImage == null || resolvedImage.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "image or image_file is required");
+        }
+
+        String resolvedProduct = firstNonEmpty(product, productName, product_name);
+        String resolvedText    = firstNonEmpty(text, headline, caption);
+        String resolvedLogoPath    = firstNonEmpty(logoPath, logo_path);
+        String resolvedFontKor     = firstNonEmpty(fontKor, font_kor);
+        
+
+        // 2) 서비스로 위임 (서비스 내부에서 compose_service.py에 맞게 키 매핑)
+        String base64 = imageGenerationService.composeProxyPassThrough(
+                resolvedImage,
+                resolvedProduct,
+                resolvedText
+        );
+
+        return ResponseEntity.ok(Collections.singletonMap("image_base64", base64));
+    }
+
+    private String firstNonEmpty(String... values) {
+        for (String v : values) {
+            if (v != null && !v.isBlank()) return v;
+        }
+        return null;
+    }
+    
 }
