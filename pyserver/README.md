@@ -1,3 +1,10 @@
+[post test]
+Invoke-WebRequest -Method POST `
+>> -Uri http://127.0.0.1:8000/generate-ad-with-text `
+>> -Headers @{"Content-Type" = "application/json"} `
+>> -Body '{"ad_content_id": 26}'
+
+
 
 [프로젝트 설명]
 
