@@ -103,10 +103,10 @@ async def generate_ad_with_text(request: AdContentRequest):
     
     try:
         print("🤖 Qwen 모듈을 통해 이미지 레이아웃 분석 및 광고 문구 생성 중...")
-        qwen_layout = await asyncio.get_event_loop().run_in_executor(
-            executor,
-            lambda: qwen_processor.process_image(original_image_base64, product_name)
-        )
+        # 이미지 데이터를 Base64 문자열에서 바이트로 디코딩합니다.
+        original_image_bytes = base64.b64decode(original_image_base64)
+        # QwenProcessor.process_image는 async 함수이므로 await로 직접 호출합니다.
+        qwen_layout = await qwen_processor.process_image(original_image_bytes, product_name, bg_prompt_enabled=True)
         print(f"✅ Qwen 분석 완료. 결과: {qwen_layout}")
     except Exception as e:
         print(f"⛔ Qwen 모듈 실행 실패: {e}")
@@ -115,10 +115,8 @@ async def generate_ad_with_text(request: AdContentRequest):
     # 2. Gemini 이미지 생성
     try:
         print("🖼️ Gemini 모듈로 광고 이미지 생성 중...")
-        gemini_image_base64 = await asyncio.get_event_loop().run_in_executor(
-            executor,
-            lambda: gemini_generator.generate_ad_image_sync(qwen_layout, product_name)
-        )
+        # GeminiImageGenerator.generate_image는 async 함수이므로 await로 직접 호출합니다.
+        gemini_image_base64 = await gemini_generator.generate_image(qwen_layout, product_name)
         print(f"✅ Gemini 이미지 생성 완료. Base64 길이: {len(gemini_image_base64) if gemini_image_base64 else 0}")
         if not gemini_image_base64:
             print("⛔ Gemini 이미지 생성 결과가 비어있습니다.")
