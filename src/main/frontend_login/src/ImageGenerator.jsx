@@ -93,7 +93,7 @@ function ImageGenerator() {
       }
 
       const res = await axios.post(
-        `${backendApiUrl}/api/images/compose`,
+        `${backendApiUrl}/generate-image`,
         form,
         {
           headers: {

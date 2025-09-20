@@ -27,7 +27,8 @@ public class ImageController {
     )
     public ResponseEntity<Map<String, Object>> generateImage(
             @RequestParam("caption") String caption,
-            @RequestParam("image") MultipartFile image
+            @RequestParam("image") MultipartFile image,
+            @RequestParam("userEmail") String userEmail
     ) throws Exception {
         Long id = imageGenerationService.generateAndSave(caption, image);
         return ResponseEntity.ok(Map.of("adContentId", id, "message", "saved"));

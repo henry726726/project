@@ -38,12 +38,12 @@ public class AdContent {
     private String adText;
 
     @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(name="original_image_base64", columnDefinition="LONGTEXT")
     private String originalImageBase64;
 
     // 합성된 이미지 (Base64 인코딩 문자열)
     @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(name="generated_image_base64", columnDefinition="LONGTEXT")
     private String generatedImageBase64;
 
     // 누가 만들었는지 이메일 저장
