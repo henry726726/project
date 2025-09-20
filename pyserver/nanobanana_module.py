@@ -1,5 +1,3 @@
-# nanobanana_module.py
-
 import os
 import io
 import json
@@ -106,38 +104,60 @@ class GeminiImageGenerator:
         )
         return system_text + "\n\n" + user_text
 
-    async def generate_image(self,
-                             image_bytes: bytes,
-                             layout_meta: Dict,
-                             max_side: int = 1024) -> bytes:
+    async def generate_image(self, image_bytes: bytes, qwen_layout: dict, product_name: str, max_side: int = 1024) -> str:
         """
         이미지 바이트와 메타데이터를 사용하여 이미지를 생성하고 바이트로 반환합니다.
         """
         try:
+            # 1. 원본 이미지 리사이즈
             img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
             resized_img = self._resize_max_side(img, max_side)
 
-            prompt_text = self._build_prompt(layout_meta)
+            # 2. Qwen 레이아웃에서 배경 프롬프트 추출 및 이미지 생성 프롬프트 구성
+            background_prompt_dict = qwen_layout.get("background", {})
+            background_prompt = background_prompt_dict.get("prompt", "")
 
-            cfg = GenerateContentConfig(
-                response_modalities=[Modality.TEXT, Modality.IMAGE],
-                candidate_count=1,
+            # 3. Gemini API 페이로드 구성 (gemini-2.5-flash-image-preview 모델에 맞춤)
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "text": background_prompt
+                            },
+                            {
+                                "inlineData": {
+                                    "mimeType": "image/jpeg",
+                                    "data": base64.b64encode(image_bytes).decode('utf-8')
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "responseModalities": ["TEXT", "IMAGE"]
+                }
+            }
+
+            # 4. Gemini API 호출
+            api_key = os.getenv("GEMINI_API_KEY")
+            api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_id}:generateContent?key={api_key}"
+            
+            response = await asyncio.get_event_loop().run_in_executor(
+                None,  # Use default executor
+                lambda: requests.post(api_url, json=payload, timeout=600)
             )
 
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=[prompt_text, resized_img],
-                config=cfg,
-            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Base64 이미지 데이터 추출
+            base64_data = result["predictions"][0]["bytesBase64Encoded"]
+            return base64_data
 
-            if not getattr(response, "candidates", None) or not response.candidates[0].content:
-                raise ValueError("Model response did not contain a valid candidate.")
-
-            for part in response.candidates[0].content.parts:
-                if getattr(part, "inline_data", None) and part.inline_data.mime_type.startswith("image/"):
-                    return part.inline_data.data
-
-            raise ValueError("No image part found in the model response.")
-
+        except requests.exceptions.RequestException as e:
+            print(f"Gemini API 호출 실패: {e}")
+            raise RuntimeError(f"Gemini API call failed: {e}")
         except Exception as e:
+            print(f"Gemini 이미지 생성 실패: {e}")
             raise RuntimeError(f"Gemini image generation failed: {e}")

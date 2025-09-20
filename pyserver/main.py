@@ -116,7 +116,7 @@ async def generate_ad_with_text(request: AdContentRequest):
     try:
         print("🖼️ Gemini 모듈로 광고 이미지 생성 중...")
         # GeminiImageGenerator.generate_image는 async 함수이므로 await로 직접 호출합니다.
-        gemini_image_base64 = await gemini_generator.generate_image(qwen_layout, product_name)
+        gemini_image_base64 = await gemini_generator.generate_image(original_image_bytes, qwen_layout, product_name)
         print(f"✅ Gemini 이미지 생성 완료. Base64 길이: {len(gemini_image_base64) if gemini_image_base64 else 0}")
         if not gemini_image_base64:
             print("⛔ Gemini 이미지 생성 결과가 비어있습니다.")
