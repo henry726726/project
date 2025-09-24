@@ -3,19 +3,12 @@
 ## 실행 방법 (처음 설정 시)
 
 ```bash
+cd project_restored
 cd pyserver
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1    <> deactivate
 pip install -r requirements.txt
-uvicorn generate_image:app --port 8000
-uvicorn generate_image:app --host 0.0.0.0 --port 8000 --reload
-uvicorn compose_service:app --host 0.0.0.0 --port 8010 --reload
 
-
-
-# 처음 시작시
-conda create -n qwen python=3.10 -y
-conda activate qwen
 
 # 2) vertex AI 클라이언트 설치 (vertexai 모듈 포함)
 python -m pip install --upgrade google-cloud-aiplatform
@@ -24,61 +17,55 @@ python -m pip install --upgrade google-cloud-aiplatform
 gcloud auth application-default login
 gcloud config set project nano-471710
 
-#설치 파일들
-pip install --upgrade pip
-pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121 `
-  --index-url https://download.pytorch.org/whl/cu121
+## venv 활성화된 상태에서 설치 파일들
+python -m pip install --upgrade pip
+pip install --index-url https://download.pytorch.org/whl/cu124 torch torchvision torchaudio
+
 
 
 pip install "git+https://github.com/huggingface/transformers"
 pip install "git+https://github.com/huggingface/diffusers"
 pip install accelerate qwen-vl-utils pillow
+pip install hf_transfer
+$env:HF_HUB_ENABLE_HF_TRANSFER = "1"
 
+# (권장) 3B 먼저 캐시 — 8GB VRAM에서 안정적
+python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='Qwen/Qwen2.5-VL-3B-Instruct')"
 
-
-python qwen25_vl_layout_hybrid.py --image sample_ad.jpg --product_name "실버 꽃모양 목걸이" --save layout.json
-
-python qwen25_vl_layout_hybrid.py `
-  --image sample_ad.jpg `
-  --product_name "실버 꽃모양 목걸이" `
-  --bg_prompt `
-  --max_new_tokens 1200 `
-  --top_p 0.85 `
-  --bg_min_chars 900 `
-  --save layout.json
-
-python qwen25_vl_layout_hybrid.py --image .\sample_ad.jpg --product_name "실버 꽃모양 목걸이" --bg_prompt --save layout_out.json
-
-
-
-$env:GOOGLE_API_KEY =
 
 
 
 # 4) 실행
-conda activate qwen
+$env:GOOGLE_API_KEY = 'api'
 
+# $env:GOOGLE_CLOUD_PROJECT = "<내_프로젝트_ID>"
 $env:GOOGLE_CLOUD_PROJECT="nano-471710"
 $env:GOOGLE_CLOUD_LOCATION="global"
-$env:GOOGLE_GENAI_USE_VERTEXAI="True"
-
-python qwen25_vl_layout_hybrid.py --image .\sample_ad.jpg --product_name "실버 꽃모양 목걸이" --bg_prompt --save layout_out.json
+$env:GOOGLE_GENAI_USE_VERTEXAI = "False"
 
 
-python nano_banana_generate.py `
-  --image sample_ad.jpg `
-  --layout_json layout.json `
-  --out stage3_output.png `
-  --max_side 1024 `
-  --model gemini-2.5-flash-image-preview
-
-
-  python ad_text_render.py `
-   --image stage4_output.png `
-    --layout_json layout_out.json `
-   --copy_json copy.json `
-   --font_kor "C:\Windows\Fonts\malgunbd.ttf" `
-   --out final_ad2.png `
-   --skip_layout_underlays `
-   --stroke 2
+uvicorn compose_service:app --host 0.0.0.0 --port 8010 --reload
 ```
+
+Test-Path .\.venv\Scripts\Activate.ps1
+
+시작(재현) 절차 요약 — Windows PowerShell 0) 공통 환경변수 (Vertex 사용 시)
+
+# Vertex 쓸 때(프로젝트/리전 본인 환경으로!):
+
+$env:GOOGLE_CLOUD_PROJECT = "<내_프로젝트_ID>"
+$env:GOOGLE_CLOUD_LOCATION = "us-central1" # 또는 global (모델 가용성에 맞춰)
+
+2. 스프링 백엔드(8080)
+   cd C:\Users\msj37\mvp_final\project
+   ./gradlew bootRun
+
+application.properties에
+
+compose.base-url=http://localhost:8010
+
+있는지 확인.
+
+3. 프론트(3000)
+   cd C:\Users\msj37\mvp_final\project\src\main\frontend_login
+   npm start

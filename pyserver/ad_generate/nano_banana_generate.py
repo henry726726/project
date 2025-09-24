@@ -75,22 +75,25 @@ def build_prompt(meta: dict) -> str:
 
     # 3) 시스템 지시(핵심 규칙)
     system_text = (
-        "You are an advertising image compositor.\n"
-        "Strictly REPLACE the entire background with the requested style while preserving the product pixels.\n"
-        "Do NOT render any text, logos, or underlay shapes. Keep all reserved boxes CLEAN.\n"
-        "Do NOT letterbox, pad, or add borders."
-        "Absolutely DO NOT draw any letters, words, placeholder text, 'HEADLINE', 'LOGO', or similar in the reserved areas. They must remain transparent background only."
+    "You are an advertising image compositor.\n"
+    "Strictly REPLACE the entire background with the requested style while preserving the product pixels.\n"
+    "Do NOT render any text, logos, underlay shapes, panels, boxes, stickers, banners, labels, rectangles, rounded rectangles, watermarks, or UI elements anywhere.\n"
+    "Reserved areas must be visually indistinguishable from the surrounding background: "
+    "seamlessly continue the same texture/color/noise (no panels, no solid fills, no transparency, no borders, no gradients, no shadows).\n"
+    "Do NOT letterbox, pad, or add borders."
     )
+
 
     # 4) 룰/제약
     rules = [
-        "- Preserve the foreground product EXACTLY (pixel-preserve). No redraw/smoothing.",
-        "- The original table/surface must disappear (full background replacement).",
-        "- Keep all reserved boxes EMPTY (negative space) for later typography/graphics.",
-        "- Follow subject_layout center/ratio for framing and composition.",
-        "- No vignettes, borders, or drop shadows unless explicitly asked.",
-        "- Output a single photorealistic image; same or higher resolution than input."
+    "- Preserve the foreground product EXACTLY (pixel-preserve). No redraw/smoothing.",
+    "- The original table/surface must disappear (full background replacement).",
+    "- Reserved areas: inpaint with matching background (NO rectangles/panels/solid blocks/alpha).",
+    "- Follow subject_layout center/ratio for framing and composition.",
+    "- No vignettes, borders, or drop shadows unless explicitly asked.",
+    "- Output a single photorealistic image; same or higher resolution than input."
     ]
+
 
     # 5) 배경 스펙/카메라/팔레트/네거티브 프롬프트 반영
     spec_lines = []
@@ -126,7 +129,8 @@ def build_prompt(meta: dict) -> str:
         f"PRODUCT:\n{json.dumps(product, ensure_ascii=False)}\n\n"
         "BACKGROUND SPEC:\n" + "\n".join(spec_lines) + "\n\n"
         f"SUBJECT LAYOUT (normalized 0~1):\n{json.dumps({'subject_layout': subj}, ensure_ascii=False)}\n\n"
-        f"RESERVED NEGATIVE SPACES (keep empty):\n{json.dumps(negative_rects, ensure_ascii=False)}\n\n"
+        f"RESERVED NEGATIVE SPACES (do NOT mark or visualize; fill seamlessly with the same background):\n"
+        f"{json.dumps(negative_rects, ensure_ascii=False)}\n\n"
         "BACKGROUND OBJECTS (optional):\n" + ("\n".join(obj_lines) if obj_lines else "(none)") + "\n\n"
         "RULES:\n" + "\n".join(rules)
     )
@@ -156,7 +160,7 @@ def save_first_image_part(resp, out_path: str) -> bool:
                 out_file = f"{root}.{ext}"
                 with open(out_file, "wb") as f:
                     f.write(data)
-                print(f"✅ [저장 완료] {out_file}")
+                print(f" [저장 완료] {out_file}")
                 return True
     return False
 
@@ -176,7 +180,7 @@ def main():
     need_vars = ["GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION", "GOOGLE_GENAI_USE_VERTEXAI"]
     missing = [v for v in need_vars if not os.environ.get(v)]
     if missing:
-        print(f"❌ 환경변수 누락: {', '.join(missing)}")
+        print(f" 환경변수 누락: {', '.join(missing)}")
         print("   예) PowerShell:")
         print('   $env:GOOGLE_CLOUD_PROJECT="nano-471710"')
         print('   $env:GOOGLE_CLOUD_LOCATION="global"')
@@ -195,13 +199,13 @@ def main():
         with open(args.layout_json, "r", encoding="utf-8") as f:
             meta = json.load(f)
     except Exception as e:
-        print(f"❌ 레이아웃 JSON 로드 실패: {e}")
+        print(f" 레이아웃 JSON 로드 실패: {e}")
         sys.exit(1)
 
     try:
         img = Image.open(args.image).convert("RGB")
     except Exception as e:
-        print(f"❌ 이미지 로드 실패({args.image}): {e}")
+        print(f" 이미지 로드 실패({args.image}): {e}")
         sys.exit(1)
 
     img = resize_max_side(img, args.max_side)
@@ -225,7 +229,7 @@ def main():
             config=cfg,
             )
     except Exception as e:
-        print(f"❌ [호출 실패] {e}")
+        print(f" [호출 실패] {e}")
         print("   - 모델/리전/인증/결제를 점검하세요.")
         print("   - 모델은 gemini-2.5-flash-image-preview, LOCATION은 global 권장.")
         sys.exit(1)

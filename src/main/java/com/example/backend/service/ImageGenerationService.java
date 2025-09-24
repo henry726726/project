@@ -1,13 +1,16 @@
+// src/main/java/com/example/backend/service/ImageGenerationService.java
 package com.example.backend.service;
 
-import java.util.Map;
+import java.io.IOException;
 import java.util.Base64;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -26,132 +29,89 @@ public class ImageGenerationService {
     @Value("${compose.base-url:http://localhost:8010}")
     private String composeBaseUrl;
 
-    // 별도 Bean 주입 없이 내부에서 생성 (충분합니다)
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper om = new ObjectMapper();
 
-    /** (A) 최소 필수 3-인자 버전 */
-    public String composeProxyPassThrough(
-            MultipartFile imageFile,
-            String product,
-            String text
-    ) {
-        return doCall(imageFile, product, text, null, null);
+    private final AdContentRepository adContentRepo;
+    private final AdResultJsonRepository adResultJsonRepo;
+
+    public ImageGenerationService(AdContentRepository adContentRepo,
+                                  AdResultJsonRepository adResultJsonRepo) {
+        this.adContentRepo = adContentRepo;
+        this.adResultJsonRepo = adResultJsonRepo;
     }
 
-    /** (B) 컨트롤러 호출과 맞춘 5-인자 버전 (logoPath, fontKor 포함) */
-    public String composeProxyPassThrough(
-            MultipartFile imageFile,
-            String product,
-            String text,
-            String logoPath,
-            String fontKor
-    ) {
-        return doCall(imageFile, product, text, logoPath, fontKor);
-    }
+    /**
+     * 합성 실행 + DB 저장(원자적).
+     * @param caption    광고 문구(=compose에 caption/text 둘 다로 전달)
+     * @param image      원본 이미지 파일
+     * @param userEmail  저장 주체(필수)
+     * @param product    제품명(선택) – 전달 시 Step1의 --product_name으로 연결됨
+     * @return 저장된 ad_contents.ad_id (AUTO_INCREMENT)
+     */
+    @Transactional
+    public Long generateAndSave(String caption,
+                                MultipartFile image,
+                                String userEmail,
+                                @org.springframework.lang.Nullable String product) throws Exception {
+        if (userEmail == null || userEmail.isBlank()) {
+            throw new IllegalArgumentException("userEmail is required");
+        }
+        if (caption == null) caption = "";
 
-    /** 내부 공통 로직: compose_service.py로 멀티파트 포워딩 */
-    private String doCall(
-            MultipartFile imageFile,
-            String product,
-            String text,
-            String logoPath,
-            String fontKor
-    ) {
-        // [CHANGED] 하드코딩 제거 → 설정 값 사용
-        String url = composeBaseUrl + "/compose";
+        // 1) 원본 이미지 Base64 (DB 보관용)
+        String originalB64 = Base64.getEncoder().encodeToString(toBytes(image));
+
+        // 2) Python compose 서비스 호출
+        final String url = composeBaseUrl + "/compose";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-
-        ByteArrayResource imageResource = new ByteArrayResource(toBytes(imageFile)) {
-            @Override
-            public String getFilename() {
-                return imageFile.getOriginalFilename();
+        ByteArrayResource imageResource = new ByteArrayResource(toBytes(image)) {
+            @Override public String getFilename() {
+                return image.getOriginalFilename();
             }
         };
 
-        // compose_service.py는 image 또는 image_file 둘 다 받음
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        // compose 측 호환성을 위해 caption/text 모두 전달
+        body.add("caption", caption);
+        body.add("text", caption);
         body.add("image", imageResource);
-
-        // 프론트 기준 키로 전달 (파이썬에서 product→product_name, text→headline로 정규화)
-        if (notBlank(product)) body.add("product", product);
-        if (notBlank(text))    body.add("text", text);
-
-        // 선택 전달
-        if (notBlank(logoPath)) body.add("logo_path", logoPath);
-        if (notBlank(fontKor))  body.add("font_kor", fontKor);
+        if (product != null && !product.isBlank()) {
+            body.add("product", product);
+        }
 
         HttpEntity<MultiValueMap<String, Object>> req = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> resp = restTemplate.postForEntity(url, req, Map.class);
-
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
-            throw new RuntimeException("compose_service call failed: " + resp.getStatusCode());
-        }
-        Object val = resp.getBody().get("image_base64");
-        if (val == null) throw new RuntimeException("compose_service returned no 'image_base64'");
-        return String.valueOf(val);
-    }
-
-    private byte[] toBytes(MultipartFile f) {
-        try { return f.getBytes(); } catch (Exception e) { throw new RuntimeException(e); }
-    }
-    private boolean notBlank(String s) { return s != null && !s.isBlank(); }
-
-    /** 간단 프록시: 컨트롤러에서 기존 generateImage(caption, image) 호출 시 사용 */
-    public String generateImage(String caption, MultipartFile image) {
-        // caption을 compose_service의 'text'로 보내고, product는 비워서 보냄
-        return composeProxyPassThrough(image, null, caption, null, null);
-    }
-
-    @Autowired private AdContentRepository adContentRepo;
-    @Autowired private AdResultJsonRepository adResultJsonRepo;
-    private final ObjectMapper om = new ObjectMapper();
-
-    /**
-     * Py 서버에서 image_base64 + layout + copy 를 받아
-     * ad_contents(원본/결과/문구)와 ad_result_json(JSON들)을 저장
-     */
-    public Long generateAndSave(String caption, MultipartFile imageFile) throws Exception {
-        // 1) 원본 이미지 base64
-        String originalB64 = Base64.getEncoder().encodeToString(toBytes(imageFile));
-
-        // [CHANGED] 하드코딩 제거 → 설정 값 사용
-        String url = composeBaseUrl + "/compose";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-        ByteArrayResource imageResource = new ByteArrayResource(toBytes(imageFile)) {
-            @Override public String getFilename() { return imageFile.getOriginalFilename(); }
-        };
-        MultiValueMap<String,Object> body = new LinkedMultiValueMap<>();
-        body.add("text", caption);     // 또는 caption
-        body.add("image", imageResource);
-
-        HttpEntity<MultiValueMap<String,Object>> req = new HttpEntity<>(body, headers);
 
         ComposeResponse resp = restTemplate.postForObject(url, req, ComposeResponse.class);
         if (resp == null) {
-            throw new RuntimeException("AI compose failed: empty response");
+            throw new RuntimeException("compose_service call failed: empty response");
+        }
+        if (resp.getImageBase64() == null || resp.getImageBase64().isBlank()) {
+            throw new RuntimeException("compose_service returned no 'image_base64'");
         }
 
-        // [CHANGED] DTO 게터 이름 수정: getImage_base64() → getImageBase64()
-        //  - ComposeResponse는 @JsonNaming(SnakeCaseStrategy)로 snake_case를 camelCase에 바인딩해야 합니다.
-        if (resp.getImageBase64() == null) {
-            throw new RuntimeException("AI compose failed: missing imageBase64");
-        }
-
-        // 3) ad_content 저장 (원본 + 결과 + 문구)
+        // 3) ad_contents 저장
         AdContent ac = new AdContent();
-        ac.setOriginalImageBase64(originalB64);
-        // [CHANGED] camelCase 게터 사용
-        ac.setGeneratedImageBase64(resp.getImageBase64());
+        ac.setUserEmail(userEmail);
         ac.setAdText(caption);
-        ac = adContentRepo.save(ac);  // id 확보
+        if (product != null && !product.isBlank()) {
+            try {
+                // 엔티티에 product 컬럼이 있으면 세팅
+                AdContent.class.getMethod("setProduct", String.class).invoke(ac, product);
+            } catch (NoSuchMethodException ignore) {
+                // 필드가 없으면 무시
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        ac.setOriginalImageBase64(originalB64);
+        ac.setGeneratedImageBase64(stripDataUrlPrefix(resp.getImageBase64())); // data: 접두사 제거(선택)
+        ac = adContentRepo.save(ac); // PK 확보
 
-        // 4) JSON 저장
+        // 4) 레이아웃/카피 JSON 저장 (있을 때만)
         if (resp.getLayout() != null) {
             AdResultJson row = new AdResultJson();
             row.setAdContentId(ac.getId());
@@ -166,9 +126,42 @@ public class ImageGenerationService {
             row.setPayload(om.writeValueAsString(resp.getCopy()));
             adResultJsonRepo.save(row);
         }
-        // meta도 저장하고 싶으면 json_type='meta'로 한 줄 더 추가 가능
+        // (옵션) meta가 있으면 저장하고 싶을 때:
+        try {
+            var getMeta = ComposeResponse.class.getMethod("getMeta");
+            Object meta = getMeta.invoke(resp);
+            if (meta != null) {
+                AdResultJson row = new AdResultJson();
+                row.setAdContentId(ac.getId());
+                row.setJsonType("meta");
+                row.setPayload(om.writeValueAsString(meta));
+                adResultJsonRepo.save(row);
+            }
+        } catch (NoSuchMethodException ignored) {
+            // DTO에 meta 없으면 패스
+        }
 
-        return ac.getId(); // 프론트로 adContentId 반환
+        return ac.getId();
     }
 
+    // ----------------- helpers -----------------
+
+    private static String stripDataUrlPrefix(String b64) {
+        if (b64 == null) return null;
+        int idx = b64.indexOf(',');
+        return (idx >= 0) ? b64.substring(idx + 1) : b64;
+    }
+
+    private static byte[] toBytes(MultipartFile f) {
+        try {
+            return f.getBytes();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String composeProxyPassThrough(MultipartFile resolvedImage, String resolvedProduct, String resolvedText) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'composeProxyPassThrough'");
+    }
 }

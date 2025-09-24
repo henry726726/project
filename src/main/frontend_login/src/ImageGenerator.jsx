@@ -54,76 +54,118 @@ function ImageGenerator() {
     }
   };
 
+  // 예: handleCompose 함수
+  // 기존 handleCompose를 이 버전으로 교체
   const handleCompose = async () => {
-    if (!imageFile) {
-      alert("이미지 파일을 선택해주세요! 😅");
-      return;
-    }
-
-    const product =
-      localStorage.getItem("selectedProduct") || textGenParams?.product || "";
-
-    const text = localStorage.getItem("selectedText") || selectedAdText || "";
-
-    if (!text) {
-      alert("합성할 문구가 없습니다. 문구 생성기에서 선택해주세요! 😲");
-      navigate("/text-generator");
-      return;
-    }
-
-    setIsLoading(true);
-    setResultUrl(null);
-    setIsSavingContent(false);
-    setError("");
-
     try {
-      const form = new FormData();
-      form.append("image", imageFile); // ✅ 파일
-      form.append("product", product); // ✅ TextGenerator.jsx의 product
-      form.append("text", text); // ✅ TextGenerator.jsx의 text
+      setError("");
+      setIsLoading(true);
 
-      const backendApiUrl =
-        process.env.REACT_APP_API_URL || "http://localhost:8080";
+      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8080";
       const token = localStorage.getItem("jwtToken");
-      if (!token) {
-        alert("로그인이 필요합니다. 다시 로그인해주세요!");
-        navigate("/auth/login");
-        setIsLoading(false);
+
+      // 1) caption 확보
+      const caption =
+        (selectedAdText && selectedAdText.trim()) ||
+        (localStorage.getItem("selectedAdText") || "").trim() ||
+        (localStorage.getItem("selectedText") || "").trim();
+
+      if (!caption) {
+        setError("문구(caption)가 비어 있어요. 먼저 문구를 선택해주세요.");
         return;
       }
 
-      const res = await axios.post(
-        `${backendApiUrl}/generate-image`,
-        form,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-          // ❌ arraybuffer 제거: JSON 응답을 그대로 받기 위함
-        }
-      );
-
-      const base64 = res.data?.image_base64;
-      if (!base64) throw new Error("서버 응답에 image_base64가 없습니다.");
-      setResultUrl(`data:image/png;base64,${base64}`);
-      alert("이미지 합성이 완료되었습니다! ✨");
-    } catch (error) {
-      console.error("이미지 합성 오류:", error);
-      const errorMessage =
-        error.response && error.response.status === 401
-          ? "인증이 필요하거나 세션이 만료되었습니다. 다시 로그인해주세요."
-          : error.response?.data?.message ||
-            error.message ||
-            "이미지 합성 중 예상치 못한 오류가 발생했습니다. 😥";
-      setError(errorMessage);
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        localStorage.removeItem("jwtToken");
-        navigate("/auth/login");
+      // 2) 이미지 준비 (File 우선, 없으면 originalBase64를 Blob으로 전환)
+      let fileToSend = imageFile;
+      if (!fileToSend && originalBase64) {
+        const toBlobFromDataUrl = (dataUrl) => {
+          const [meta, b64] = dataUrl.split(",");
+          const mime =
+            (meta?.match(/data:(.*?);base64/) || [])[1] || "image/png";
+          const bin = atob(b64);
+          const u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          return new Blob([u8], { type: mime });
+        };
+        const blob = toBlobFromDataUrl(originalBase64);
+        fileToSend = new File([blob], "upload.png", { type: blob.type });
       }
+
+      if (!fileToSend) {
+        setError("이미지를 먼저 선택해주세요.");
+        return;
+      }
+
+      const product = localStorage.getItem("product") || "";
+
+      // 3) FormData
+      const fd = new FormData();
+      fd.append("caption", caption);
+      fd.append("image", fileToSend);
+      if (product) fd.append("product", product);
+      const userEmail = localStorage.getItem("userEmail") || "";
+      if (userEmail) fd.append("userEmail", userEmail);
+
+      // 4) 호출
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await axios.post(`${apiUrl}/api/generate-image`, fd, {
+        withCredentials: true,
+        headers,
+      });
+
+      // 5) 응답 처리: image_base64 우선, 없으면 adContentId로 재조회
+      const b64 = res.data?.image_base64 || res.data?.imageBase64 || null;
+
+      if (b64) {
+        setResultUrl(`data:image/png;base64,${b64}`);
+        return;
+      }
+
+      const id = res.data?.adContentId;
+      if (id) {
+        const getHeaders = {};
+        if (token) getHeaders["Authorization"] = `Bearer ${token}`;
+        const rec = await axios.get(`${apiUrl}/api/ad-content/${id}`, {
+          headers: getHeaders,
+          withCredentials: true,
+        });
+        const b64img = rec.data?.generatedImageBase64;
+        if (b64img) {
+          setResultUrl(`data:image/png;base64,${b64img}`);
+        } else {
+          setError("이미지가 저장되었지만 조회 응답에 이미지가 없습니다.");
+        }
+      } else {
+        setError("이미지 생성은 성공했지만 식별자(adContentId)가 없습니다.");
+      }
+    } catch (err) {
+      console.error("이미지 합성 오류:", err);
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "이미지 합성 중 오류가 발생했습니다."
+      );
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ImageGenerator.jsx - 컴포넌트 함수 내부(예: handleCompose 아래)
+  const handleGoFacebook = () => {
+    if (!resultUrl) {
+      alert("이미지를 먼저 합성해 주세요.");
+      return;
+    }
+    navigate("/facebook-input", {
+      state: {
+        adText: selectedAdText ?? "",
+        imageUrl: resultUrl, // 합성 결과
+        // originalBase64,         // 필요하면 원본도 함께 전달
+      },
+    });
   };
 
   const handleSaveContent = async () => {
@@ -256,6 +298,26 @@ function ImageGenerator() {
         }}
       >
         {isLoading ? "이미지 합성 중... ⏳" : "이미지 합성하기 🎨"}
+      </button>
+
+      {/* ⬇️ 여기 추가: 합성이 끝나야(=resultUrl 존재) 활성화 */}
+      <button
+        onClick={handleGoFacebook}
+        disabled={isLoading || !resultUrl}
+        style={{
+          width: "100%",
+          padding: 12,
+          backgroundColor: isLoading || !resultUrl ? "#999" : "#1877f2",
+          color: "white",
+          border: "none",
+          borderRadius: 5,
+          fontSize: "1.05em",
+          cursor: isLoading || !resultUrl ? "not-allowed" : "pointer",
+          marginBottom: 10,
+          opacity: isLoading || !resultUrl ? 0.7 : 1,
+        }}
+      >
+        FacebookInput으로 이동 ➡️
       </button>
 
       {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}

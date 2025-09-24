@@ -49,23 +49,58 @@ app.add_middleware(
 # ----------------------------
 # 공용 유틸
 # ----------------------------
-def run_argv(argv: List[str], cwd: str | None = None) -> str:
-    log.info(">> (cwd=%s) %s", cwd or os.getcwd(), " ".join(argv))
-    p = subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
-    if p.returncode != 0:
-        log.error(
-            "Command failed (%s):\nSTDOUT:\n%s\nSTDERR:\n%s",
-            p.returncode, p.stdout, p.stderr
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=f"Command failed ({p.returncode}): {' '.join(argv)}\nSTDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
-        )
-    if p.stdout:
-        log.info("STDOUT(≤2k): %s", p.stdout[:2048])
-    if p.stderr:
-        log.info("STDERR(≤2k): %s", p.stderr[:2048])
-    return p.stdout
+# compose_service.py
+import os, sys, subprocess, io, threading
+
+def run_argv(argv, timeout_s=1800, cwd=None, env=None, stream_prefix=None):
+    merged_env = {**os.environ, **(env or {})}
+    merged_env.update({"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"})
+
+    proc = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        env=merged_env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=1,                  # 줄 단위 버퍼링 힌트
+        text=False,                 # 바이너리로 받고
+        creationflags=(subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0),
+    )
+
+    # UTF-8로 감싼 텍스트 래퍼 (디코딩 에러 방지)
+    stdout_t = io.TextIOWrapper(proc.stdout, encoding="utf-8", errors="backslashreplace", newline="")
+    stderr_t = io.TextIOWrapper(proc.stderr, encoding="utf-8", errors="backslashreplace", newline="")
+
+    out_lines, err_lines = [], []
+
+    def pump(src, collector, is_err=False):
+        for line in src:
+            collector.append(line)
+            if stream_prefix:
+                if is_err:
+                    print(f"{stream_prefix} STDERR: {line.rstrip()}", file=sys.stderr)
+                else:
+                    print(f"{stream_prefix} STDOUT: {line.rstrip()}")
+        src.close()
+
+    t1 = threading.Thread(target=pump, args=(stdout_t, out_lines, False), daemon=True)
+    t2 = threading.Thread(target=pump, args=(stderr_t, err_lines, True), daemon=True)
+    t1.start(); t2.start()
+
+    try:
+        ret = proc.wait(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        ret = proc.wait()
+
+    t1.join(); t2.join()
+
+    out_text = "".join(out_lines)
+    err_text = "".join(err_lines)
+    return ret, out_text, err_text
+
+
+
 
 def _check_vertex_env_or_400():
     if SKIP_VERTEX_ENV_CHECK:
@@ -89,7 +124,7 @@ async def compose(
     image_file: Optional[UploadFile] = File(None),
 
     # 문자열 파라미터 (둘 다 허용)
-    product: str = Form(""),
+    product: Optional[str] = Form(None),
     text: str = Form(""),          # 프론트에서 쓰던 이름
     caption: str = Form(""),       # 호환용(백엔드에서 caption을 쓰는 경우)
 
@@ -106,7 +141,7 @@ async def compose(
 
     # caption/text/headline 중 우선순위로 문구 결정
     resolved_headline = (text or caption or headline).strip()
-    resolved_product  = (product or product_name).strip()
+    resolved_product = (product or "").strip()
 
     # 1) Step2 환경 (Vertex/GenAI) 체크
     _check_vertex_env_or_400()
@@ -135,11 +170,24 @@ async def compose(
             sys.executable, QWEN_SCRIPT,
             "--image", img_path,
             "--bg_prompt",
-            "--save", layout_json
+            "--save", layout_json,
+            "--product_name", (resolved_product or "")
         ]
         if resolved_product:
-            argv1.extend(["--product_name", resolved_product])
-        run_argv(argv1, cwd=QWEN_DIR)
+            argv += ["--product_name", resolved_product] 
+
+        # compose() 안, Step1 호출 직후
+        out1, err1, rc1 = run_argv(argv1, cwd=QWEN_DIR, timeout_s=1800)
+
+# 🔒 반드시 파일 존재/사이즈 검증
+        if not os.path.exists(layout_json) or os.path.getsize(layout_json) < 10:
+            log.error("Step1 produced no layout json. head(stdout)=%s", (out1 or "")[:1000])
+            raise HTTPException(
+                status_code=500,
+                detail="Step1 (Qwen) did not generate layout JSON. See server logs."
+            )
+
+
 
         # 4) Step2 — 배경 합성(Nano Banana / Gemini 2.5 Flash Image)
         argv2 = [
@@ -220,6 +268,7 @@ async def compose(
 async def generate(
     caption: str = Form(""),
     image: UploadFile = File(...),
+    product: Optional[str] = Form(None), 
 ):
     # 내부적으로 /compose와 동일한 처리 경로 사용
     return await compose(

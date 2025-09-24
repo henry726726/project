@@ -79,7 +79,7 @@ function TextGenerator() {
     // ✅ ImageGenerator에서 읽을 키들 저장
     localStorage.setItem("selectedText", chosenText); // 새 기준
     localStorage.setItem("selectedAdText", chosenText); // 구버전 호환
-    localStorage.setItem("selectedProduct", form.product || "");
+    localStorage.setItem("Product", form.product || "");
     localStorage.setItem("textGenParams", JSON.stringify(form));
 
     navigate("/image-generator");

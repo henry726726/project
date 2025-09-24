@@ -4,25 +4,30 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ad_result_json")
+@Table(
+    name = "ad_result_json",
+    indexes = {
+        @Index(name = "idx_result_content_type", columnList = "ad_content_id, json_type")
+    }
+)
 public class AdResultJson {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // FK: ad_contents.id
     @Column(name = "ad_content_id", nullable = false)
     private Long adContentId;
 
     @Column(name = "json_type", length = 32, nullable = false)
     private String jsonType;
 
-    // MySQL JSON 컬럼 (문자열로 보관)
-    @Column(columnDefinition = "JSON", nullable = false)
+    // 이식성↑: JSON 제약을 빼고 LOB로 저장 (H2/MariaDB 등도 안전)
+    @Lob
+    @Column(name = "payload", columnDefinition = "LONGTEXT", nullable = false)
     private String payload;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public AdResultJson() {}
@@ -34,7 +39,7 @@ public class AdResultJson {
         }
     }
 
-    // ----- getters / setters -----
+    // getters / setters
     public Long getId() { return id; }
 
     public Long getAdContentId() { return adContentId; }

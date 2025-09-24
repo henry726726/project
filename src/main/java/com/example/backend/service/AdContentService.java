@@ -18,6 +18,11 @@ public class AdContentService {
         this.adContentRepository = adContentRepository;
     }
 
+    public AdContent findByIdOrThrow(Long id) {
+    return adContentRepository.findById(id)
+        .orElseThrow(() -> new IllegalArgumentException("Not found: " + id));
+}
+
     public AdContent saveAdContent(SaveAdContentRequest request, String userEmail) {
         AdContent adContent = new AdContent();
         adContent.setAdText(request.getAdText());

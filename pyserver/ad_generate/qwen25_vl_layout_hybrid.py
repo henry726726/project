@@ -4,6 +4,27 @@ from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
 from PIL import Image
 
+
+NON_INTERACTIVE = os.getenv("QWEN_NON_INTERACTIVE", "1") == "1"
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DTYPE  = torch.float16 if DEVICE == "cuda" else torch.float32
+torch.backends.cuda.matmul.allow_tf32 = True  # 성능 미세향상
+
+model_id = os.getenv("QWEN_VL_MODEL", "Qwen/Qwen2.5-VL-3B-Instruct")
+
+model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+    model_id,
+    dtype=DTYPE,             # ✅ 올바른 파라미터
+    device_map="auto",             # ✅ VRAM에 맞춰 자동 배치
+    attn_implementation="sdpa",    # ✅ Windows/PyTorch에서 안정/빠름
+).eval()
+
+processor = AutoProcessor.from_pretrained(model_id, use_fast=False)
+
+print(f"[QwenVL] model={model_id} cuda={torch.cuda.is_available()} "
+      f"device={next(model.parameters()).device} dtype={next(model.parameters()).dtype}")
+
 # -------------------------------------------------
 # 1) First-pass schema: product/background summary + layout JSON
 # -------------------------------------------------
@@ -532,7 +553,7 @@ def ensure_background_prompts(parsed, product_name, context_json, min_chars=800)
 # -------------------------------------------------
 
 def generate_bg_plan(model, processor, image_path, product_name, parsed, palette,
-                     max_new_tokens=1000, top_p=0.9, temperature=0.7):
+                     max_new_tokens=512, top_p=0.9, temperature=0.7):
     context = summarize_layout_for_bg(parsed)
     user_text = (
         f"[제품명 힌트] {product_name or ''}\n"
@@ -552,10 +573,14 @@ def generate_bg_plan(model, processor, image_path, product_name, parsed, palette
     inputs = processor(text=[text], images=image_inputs, videos=video_inputs,
                        padding=True, return_tensors="pt").to(model.device)
 
+    # 환경변수 상한과 매개변수 조합
+    first_cap = int(os.getenv("QWEN_FIRSTPASS_MAX_NEW_TOKENS", "384"))
+    first_tokens = min(int(max_new_tokens or 512), first_cap)
+
     with torch.no_grad():
         out_ids = model.generate(
             **inputs,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=first_tokens,
             do_sample=True,
             top_p=top_p,
             temperature=temperature
@@ -576,6 +601,7 @@ def generate_bg_plan(model, processor, image_path, product_name, parsed, palette
             "objects": []
         }
 
+
 # -------------------------------------------------
 # Main
 # -------------------------------------------------
@@ -592,17 +618,29 @@ def main():
     ap.add_argument("--bg_prompt", action="store_true", help="배경 프롬프트/소품 계획 생성 활성화")
     args = ap.parse_args()
 
-    product_name = args.product_name or input("제품 이름을 입력하세요: ").strip()
-    image_path = args.image or input("제품 이미지 파일 경로를 입력하세요 (예: './image.jpg'): ").strip()
+    def _maybe_prompt(prompt, default=""):
+        if NON_INTERACTIVE:
+            return default
+        if sys.stdin and sys.stdin.isatty():
+            try:
+                return input(prompt).strip() or default
+            except EOFError:
+                return default
+        return default
+
+
+    # main() 안 — 절대 입력 대기하지 않음
+    product_name = (args.product_name or os.getenv("PRODUCT_NAME", "")).strip()
+    image_path   = (args.image or os.getenv("INPUT_IMAGE", "")).strip()
+    if not image_path:
+        print("[에러] --image 인자가 필요합니다.", file=sys.stderr)
+        sys.exit(2)
+
+
+    # ← 들여쓰기 오류로 if 블록 안에 갇혀 있던 부분을 밖으로 뺐습니다.
     if not os.path.exists(image_path):
         print(f"[에러] 이미지 경로를 찾을 수 없습니다: {image_path}", file=sys.stderr)
         sys.exit(1)
-
-    model_id = "Qwen/Qwen2.5-VL-7B-Instruct"
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        model_id, dtype="auto", device_map="auto"
-    )
-    processor = AutoProcessor.from_pretrained(model_id, use_fast=False)
 
     user_text = f"[제품명 힌트] {product_name}\n{SCHEMA_TEXT}"
     messages = [
@@ -618,10 +656,14 @@ def main():
     inputs = processor(text=[text], images=image_inputs, videos=video_inputs,
                        padding=True, return_tensors="pt").to(model.device)
 
+    # 1차 토큰 상한
+    first_cap = int(os.getenv("QWEN_FIRSTPASS_MAX_NEW_TOKENS", "384"))
+    first_tokens = min(int(args.max_new_tokens or 512), first_cap)
+
     with torch.no_grad():
         out_ids = model.generate(
             **inputs,
-            max_new_tokens=args.max_new_tokens,
+            max_new_tokens=first_tokens,
             do_sample=True,
             top_p=args.top_p,
             temperature=args.temperature
@@ -645,9 +687,10 @@ def main():
         palette = extract_palette_hex(image_path, k=5)
         bg_plan = generate_bg_plan(
             model, processor, image_path, product_name, parsed, palette,
-            max_new_tokens=max(1000, args.max_new_tokens),
+            max_new_tokens=512,
             top_p=args.top_p, temperature=args.temperature
         )
+
         if "background" not in parsed or not isinstance(parsed["background"], dict):
             parsed["background"] = {}
         parsed["background"].update({
@@ -663,12 +706,20 @@ def main():
     context_for_bg = summarize_layout_for_bg(parsed)
     parsed = ensure_background_prompts(parsed, product_name, context_for_bg, min_chars=args.bg_min_chars)
 
+    # parsed 를 최종 결과 딕셔너리라고 가정
     if args.save:
-        with open(args.save, "w", encoding="utf-8") as f:
-            json.dump(parsed, f, ensure_ascii=False, indent=2)
-        print(f"[저장 완료] {args.save}")
+        try:
+            with open(args.save, "w", encoding="utf-8") as f:
+                json.dump(parsed, f, ensure_ascii=False, indent=2)
+            print(f"[OK] wrote json: {args.save}")  # ← STDOUT으로 남겨둠
+        except Exception as e:
+            print(f"[ERROR] failed to write json: {e}", file=sys.stderr)
+            sys.exit(3)
     else:
+    # 그래도 stdout로는 찍어둠
         print(json.dumps(parsed, ensure_ascii=False, indent=2))
+
+
 
 
 if __name__ == "__main__":

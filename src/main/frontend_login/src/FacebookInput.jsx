@@ -1,23 +1,23 @@
 // src/FacebookInput.jsx
 
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 function FacebookInput() {
-  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8080";
 
   const [adAccounts, setAdAccounts] = useState([]);
-  const [selectedAccount, setSelectedAccount] = useState('');
+  const [selectedAccount, setSelectedAccount] = useState("");
 
   const [adSettings, setAdSettings] = useState({
-    accountId: '',
-    pageId: '',
-    link: '',
-    billingEvent: 'IMPRESSIONS',
-    optimizationGoal: 'LINK_CLICKS',
-    bidStrategy: 'LOWEST_COST_WITHOUT_CAP',
-    dailyBudget: '',
-    startTime: '',
+    accountId: "",
+    pageId: "",
+    link: "",
+    billingEvent: "IMPRESSIONS",
+    optimizationGoal: "LINK_CLICKS",
+    bidStrategy: "LOWEST_COST_WITHOUT_CAP",
+    dailyBudget: "",
+    startTime: "",
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +25,7 @@ function FacebookInput() {
 
   // 광고 계정 목록 불러오기
   useEffect(() => {
-    const jwtToken = localStorage.getItem('jwtToken');
+    const jwtToken = localStorage.getItem("jwtToken");
     if (!jwtToken) return;
 
     axios
@@ -33,7 +33,7 @@ function FacebookInput() {
         headers: { Authorization: `Bearer ${jwtToken}` },
       })
       .then((res) => setAdAccounts(res.data))
-      .catch((err) => console.error('광고 계정 불러오기 실패:', err));
+      .catch((err) => console.error("광고 계정 불러오기 실패:", err));
   }, [apiBase]);
 
   const handleChange = (e) => {
@@ -48,7 +48,7 @@ function FacebookInput() {
     const value = e.target.value;
     setSelectedAccount(value);
     if (value) {
-      const [accountId, pageId] = value.split(',');
+      const [accountId, pageId] = value.split(",");
       setAdSettings((prev) => ({
         ...prev,
         accountId,
@@ -57,29 +57,29 @@ function FacebookInput() {
     } else {
       setAdSettings((prev) => ({
         ...prev,
-        accountId: '',
-        pageId: '',
+        accountId: "",
+        pageId: "",
       }));
     }
   };
 
   const handleCreateAd = async () => {
     if (!adSettings.accountId || !adSettings.pageId) {
-      alert('광고 계정을 선택해 주세요.');
+      alert("광고 계정을 선택해 주세요.");
       return;
     }
     if (!adSettings.link) {
-      alert('랜딩 URL을 입력해 주세요.');
+      alert("랜딩 URL을 입력해 주세요.");
       return;
     }
     if (!adSettings.dailyBudget || !adSettings.startTime) {
-      alert('하루 예산과 광고 시작 시간은 필수 입력 항목입니다! 😅');
+      alert("하루 예산과 광고 시작 시간은 필수 입력 항목입니다! 😅");
       return;
     }
 
-    const jwtToken = localStorage.getItem('jwtToken');
+    const jwtToken = localStorage.getItem("jwtToken");
     if (!jwtToken) {
-      alert('로그인이 필요합니다!');
+      alert("로그인이 필요합니다!");
       return;
     }
 
@@ -100,19 +100,19 @@ function FacebookInput() {
       const response = await axios.post(`${apiBase}/meta/create-ad`, payload, {
         headers: {
           Authorization: `Bearer ${jwtToken}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
-      console.log('✅ 광고 생성 응답:', response.data);
-      alert('🎉 광고가 성공적으로 생성되었습니다!');
+      console.log("✅ 광고 생성 응답:", response.data);
+      alert("🎉 광고가 성공적으로 생성되었습니다!");
       setAdCreatedOrUpdated(true);
     } catch (error) {
-      console.error('❌ 광고 생성 실패:', error);
+      console.error("❌ 광고 생성 실패:", error);
       const message =
         error.response?.data?.message ||
         error.response?.data ||
-        '광고 생성 중 오류가 발생했습니다.';
+        "광고 생성 중 오류가 발생했습니다.";
       alert(message);
     } finally {
       setIsSaving(false);
@@ -121,58 +121,58 @@ function FacebookInput() {
 
   const canShowCreateAdButton =
     adSettings.link && adSettings.dailyBudget && adSettings.startTime;
-  const buttonText = adCreatedOrUpdated ? '광고 업로드하기' : '광고 생성하기';
+  const buttonText = adCreatedOrUpdated ? "광고 업로드하기" : "광고 생성하기";
 
   const tdStyle = {
-    border: '1px solid #ccc',
-    padding: '8px',
-    verticalAlign: 'top',
-    fontWeight: 'normal',
-    color: '#555',
+    border: "1px solid #ccc",
+    padding: "8px",
+    verticalAlign: "top",
+    fontWeight: "normal",
+    color: "#555",
   };
   const thStyle = {
-    border: '1px solid #ccc',
-    padding: '8px',
-    backgroundColor: '#e0e0e0',
-    textAlign: 'left',
-    fontWeight: 'bold',
-    color: '#333',
-    width: '40%',
+    border: "1px solid #ccc",
+    padding: "8px",
+    backgroundColor: "#e0e0e0",
+    textAlign: "left",
+    fontWeight: "bold",
+    color: "#333",
+    width: "40%",
   };
   const labelStyle = {
-    display: 'block',
-    marginBottom: '5px',
-    fontWeight: 'bold',
-    color: '#444',
-    fontSize: '0.95em',
+    display: "block",
+    marginBottom: "5px",
+    fontWeight: "bold",
+    color: "#444",
+    fontSize: "0.95em",
   };
   const inputStyle = {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #ccc',
-    borderRadius: '5px',
-    fontSize: '1em',
-    boxSizing: 'border-box',
+    width: "100%",
+    padding: "10px 12px",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    fontSize: "1em",
+    boxSizing: "border-box",
   };
 
   return (
     <div
       style={{
-        maxWidth: '600px',
-        margin: '40px auto',
-        padding: '25px',
-        border: '1px solid #ddd',
-        borderRadius: '10px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        backgroundColor: '#fff',
-        fontFamily: 'Arial, sans-serif',
+        maxWidth: "600px",
+        margin: "40px auto",
+        padding: "25px",
+        border: "1px solid #ddd",
+        borderRadius: "10px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+        backgroundColor: "#fff",
+        fontFamily: "Arial, sans-serif",
       }}
     >
-      <h2 style={{ color: '#333', textAlign: 'center', marginBottom: '30px' }}>
+      <h2 style={{ color: "#333", textAlign: "center", marginBottom: "30px" }}>
         📊 페이스북 광고 설정
       </h2>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
         {/* 광고 계정 선택 */}
         <div>
           <label style={labelStyle}>광고 계정 선택:</label>
@@ -280,27 +280,27 @@ function FacebookInput() {
             onClick={handleCreateAd}
             disabled={isSaving}
             style={{
-              width: '100%',
-              padding: '12px 20px',
-              marginTop: '20px',
-              backgroundColor: isSaving ? '#cccccc' : '#6f42c1',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.2s ease',
-              boxShadow: '0 4px 8px rgba(111,66,193,0.2)',
+              width: "100%",
+              padding: "12px 20px",
+              marginTop: "20px",
+              backgroundColor: isSaving ? "#cccccc" : "#6f42c1",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "18px",
+              fontWeight: "bold",
+              cursor: isSaving ? "not-allowed" : "pointer",
+              transition: "background-color 0.2s ease",
+              boxShadow: "0 4px 8px rgba(111,66,193,0.2)",
             }}
             onMouseOver={(e) =>
-              !isSaving && (e.currentTarget.style.backgroundColor = '#5a37a9')
+              !isSaving && (e.currentTarget.style.backgroundColor = "#5a37a9")
             }
             onMouseOut={(e) =>
-              !isSaving && (e.currentTarget.style.backgroundColor = '#6f42c1')
+              !isSaving && (e.currentTarget.style.backgroundColor = "#6f42c1")
             }
           >
-            {isSaving ? '메타 광고 생성 중…' : buttonText}
+            {isSaving ? "메타 광고 생성 중…" : buttonText}
           </button>
         )}
       </div>
@@ -308,26 +308,28 @@ function FacebookInput() {
       {/* 미리보기 */}
       <div
         style={{
-          marginTop: '40px',
-          padding: '15px',
-          backgroundColor: '#eef3f9',
-          borderRadius: '8px',
+          marginTop: "40px",
+          padding: "15px",
+          backgroundColor: "#eef3f9",
+          borderRadius: "8px",
         }}
       >
-        <h3 style={{ color: '#444', marginBottom: '15px' }}>📋 현재 설정 미리보기</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <h3 style={{ color: "#444", marginBottom: "15px" }}>
+          📋 현재 설정 미리보기
+        </h3>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tbody>
             <tr>
               <th style={thStyle}>광고 계정</th>
               <td style={tdStyle}>
                 {selectedAccount
                   ? `${adSettings.accountId} / ${adSettings.pageId}`
-                  : '-'}
+                  : "-"}
               </td>
             </tr>
             <tr>
               <th style={thStyle}>랜딩 URL</th>
-              <td style={tdStyle}>{adSettings.link || '-'}</td>
+              <td style={tdStyle}>{adSettings.link || "-"}</td>
             </tr>
             <tr>
               <th style={thStyle}>과금 기준</th>

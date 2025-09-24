@@ -2,26 +2,28 @@ package com.example.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter; // 💡💡💡 @Setter 임포트 확인
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-// 광고 콘텐츠 엔티티 (JPA 테이블 매핑)
 @Entity
-@Table(name = "ad_contents")
+@Table(
+    name = "ad_contents",
+    indexes = {
+        @Index(name = "idx_ad_contents_user_email_created", columnList = "userEmail, createdAt")
+    }
+)
 @Getter
-@Setter // 💡💡💡 @Setter 어노테이션이 있는지 확인합니다.
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class AdContent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id") 
     private Long id;
 
-    // 문구 생성에 사용된 파라미터
     @Column(length = 255)
     private String product;
     @Column(length = 255)
@@ -33,115 +35,24 @@ public class AdContent {
     @Column(length = 255)
     private String duration;
 
-    // 생성된 광고 문구
-    @Column(columnDefinition = "TEXT")
+    // 광고 문구: TEXT면 충분, DB 이식성↑ 위해 columnDefinition 제거
+    @Lob
     private String adText;
 
+    // 원본/합성 이미지는 LOB로만 지정(이식성↑). MySQL에선 LONGTEXT/CLOB로 매핑됨
     @Lob
-    @Column(name="original_image_base64", columnDefinition="LONGTEXT")
     private String originalImageBase64;
 
-    // 합성된 이미지 (Base64 인코딩 문자열)
     @Lob
-    @Column(name="generated_image_base64", columnDefinition="LONGTEXT")
     private String generatedImageBase64;
 
-    // 누가 만들었는지 이메일 저장
+    // 파이프라인에서 항상 세팅할 수 있으면 false 유지, 아니면 true로 임시 완화
     @Column(nullable = false, length = 255)
     private String userEmail;
 
-    // 생성 시간
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // 💡💡💡 수동 Getter/Setter 메소드 추가 시작! 💡💡💡
-    // Lombok @Getter/@Setter가 제대로 작동하지 않을 경우를 대비합니다.
-
-    // Getters
-    public Long getId() {
-        return id;
-    }
-
-    public String getProduct() {
-        return product;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public String getPurpose() {
-        return purpose;
-    }
-
-    public String getKeyword() {
-        return keyword;
-    }
-
-    public String getDuration() {
-        return duration;
-    }
-
-    public String getAdText() {
-        return adText;
-    }
-
-    public String getGeneratedImageBase64() {
-        return generatedImageBase64;
-    }
-
-    public String getUserEmail() {
-        return userEmail;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    // Setters
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setProduct(String product) {
-        this.product = product;
-    }
-
-    public void setTarget(String target) {
-        this.target = target;
-    }
-
-    public void setPurpose(String purpose) {
-        this.purpose = purpose;
-    }
-
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
-
-    public void setDuration(String duration) {
-        this.duration = duration;
-    }
-
-    public void setAdText(String adText) {
-        this.adText = adText;
-    }
-
-    public void setGeneratedImageBase64(String generatedImageBase64) {
-        this.generatedImageBase64 = generatedImageBase64;
-    }
-
-    public void setUserEmail(String userEmail) {
-        this.userEmail = userEmail;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    // 💡💡💡 수동 Getter/Setter 메소드 추가 끝! 💡💡💡
-
-    // 저장 전 생성 시간을 자동으로 설정
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

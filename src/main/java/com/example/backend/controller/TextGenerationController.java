@@ -28,14 +28,22 @@ public class TextGenerationController {
         public Map<String, Object> generate(@RequestBody PromptRequest request) throws IOException {
                 // 🔹 확장된 프롬프트 템플릿
                 String prompt = String.format(
-                                "다음 광고 정보를 바탕으로 문장은 짧고 강렬하게, 실제 온라인 광고 문구처럼 3개를 작성해줘. 각 문구는 30자 이내이며 CTA(Call-to-Action)를 포함해야 해.\n\n"
+                                """               
+                                아래 광고 정보를 바탕으로, 실제 온라인 광고에 쓸 수 있는 초단문 카피 3개를 만든다. 
+                                각 문구는 공백 포함 30자 이내, 한국어.
+                                서로 다른 접근 3종으로 작성: ①혜택형 ②구매유도형 ③사회적증거/신뢰형.
+                                과장/허위는 금지. 입력의 금지어는 사용하지 않는다.
+                                이모지/해시태그/따옴표/말줄임표(...) 금지. 특수문자 최소화, 마침표 생략.
+                                브랜드명은 최대 1회만 노출.
+                                세 문구 간 중복 어휘 최소화.
+                                30자 초과가 하나라도 있으면 전부 재작성하여 모두 30자 이내로 맞춘다.\n\n"
                                                 +
                                                 "제품명: %s\n" +
                                                 "타겟: %s\n" +
                                                 "목적: %s\n" +
                                                 "강조 키워드: %s\n" +
                                                 "광고 기간: %s\n\n" +
-                                                "응답 형식: [\"문구1\", \"문구2\", \"문구3\"]",
+                                                "응답 형식: [\"문구1\", \"문구2\", \"문구3\"]""",
 
                                 request.getProduct(),
                                 request.getTarget(),
