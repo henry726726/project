@@ -169,7 +169,7 @@ function FacebookInput() {
       }}
     >
       <h2 style={{ color: "#333", textAlign: "center", marginBottom: "30px" }}>
-        📊 페이스북 광고 설정
+        페이스북 광고 설정
       </h2>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
@@ -315,7 +315,7 @@ function FacebookInput() {
         }}
       >
         <h3 style={{ color: "#444", marginBottom: "15px" }}>
-          📋 현재 설정 미리보기
+          현재 설정 미리보기
         </h3>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tbody>

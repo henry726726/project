@@ -251,7 +251,7 @@ function ImageGenerator() {
         textAlign: "center",
       }}
     >
-      <h2 style={{ marginBottom: 20, color: "#333" }}>🖼️ 광고 이미지 합성기</h2>
+      <h2 style={{ marginBottom: 20, color: "#333" }}> 광고 이미지 합성기</h2>
 
       <div
         style={{
@@ -297,7 +297,7 @@ function ImageGenerator() {
           opacity: isLoading || !selectedAdText ? 0.7 : 1,
         }}
       >
-        {isLoading ? "이미지 합성 중... ⏳" : "이미지 합성하기 🎨"}
+        {isLoading ? "이미지 합성 중... ⏳" : "이미지 합성하기 "}
       </button>
 
       {/* ⬇️ 여기 추가: 합성이 끝나야(=resultUrl 존재) 활성화 */}
@@ -353,7 +353,7 @@ function ImageGenerator() {
               opacity: isSavingContent ? 0.7 : 1,
             }}
           >
-            {isSavingContent ? "콘텐츠 저장 중... 💾" : "광고 콘텐츠 저장 ✅"}
+            {isSavingContent ? "콘텐츠 저장 중... " : "광고 콘텐츠 저장 ✅"}
           </button>
         </div>
       )}

@@ -145,7 +145,7 @@ function TextGenerator() {
           fontWeight: 600,
         }}
       >
-        ✨ 광고 문구 생성기 ✨
+        광고 문구 생성기
       </h2>
       <form
         onSubmit={handleSubmit}
@@ -187,7 +187,7 @@ function TextGenerator() {
           style={inputStyle}
         />
         <button type="submit" disabled={loading} style={buttonStyle}>
-          {loading ? "문구 생성 중... ⏳" : "광고 문구 생성하기 🚀"}
+          {loading ? "문구 생성 중... ⏳" : "광고 문구 생성하기 "}
         </button>
       </form>
 

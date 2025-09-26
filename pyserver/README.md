@@ -36,7 +36,7 @@ python -c "from huggingface_hub import snapshot_download; snapshot_download(repo
 
 
 # 4) 실행
-$env:GOOGLE_API_KEY = 'api'
+$env:GOOGLE_API_KEY = ''
 
 # $env:GOOGLE_CLOUD_PROJECT = "<내_프로젝트_ID>"
 $env:GOOGLE_CLOUD_PROJECT="nano-471710"
