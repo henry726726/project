@@ -8,16 +8,16 @@ from PIL import Image
 NON_INTERACTIVE = os.getenv("QWEN_NON_INTERACTIVE", "1") == "1"
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-DTYPE  = torch.float16 if DEVICE == "cuda" else torch.float32
+DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
 torch.backends.cuda.matmul.allow_tf32 = True  # 성능 미세향상
 
 model_id = os.getenv("QWEN_VL_MODEL", "Qwen/Qwen2.5-VL-3B-Instruct")
 
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     model_id,
-    dtype=DTYPE,             # ✅ 올바른 파라미터
-    device_map="auto",             # ✅ VRAM에 맞춰 자동 배치
-    attn_implementation="sdpa",    # ✅ Windows/PyTorch에서 안정/빠름
+    dtype=DTYPE,  # ✅ 올바른 파라미터
+    device_map="auto",  # ✅ VRAM에 맞춰 자동 배치
+    attn_implementation="sdpa",  # ✅ Windows/PyTorch에서 안정/빠름
 ).eval()
 
 processor = AutoProcessor.from_pretrained(model_id, use_fast=False)
@@ -31,15 +31,16 @@ print(f"[QwenVL] model={model_id} cuda={torch.cuda.is_available()} "
 SCHEMA_TEXT = (
     '오직 다음 JSON만 출력해. 다른 설명/마크다운 금지.\n'
     '{\n'
-    '  "product": { "type":"...", "material":"...", "design":"...", "features":"..." },\n'
-    '  "background": { "ideal_color":"...", "texture":"...", "lighting":"...", "style":"..." },\n'
-    '  "layout": {\n'
-    '    "subject_layout": { "center":[cx,cy], "ratio":[rw,rh] },\n'
-    '    "nongraphic_layout": [ {"type":"headline","bbox":[x,y,w,h],"confidence":c} ],\n'
-    '    "graphic_layout": [\n'
-    '      {"type":"logo","content":"","bbox":[x,y,w,h],"confidence":c}\n'
-    '    ]\n'
-    '  }\n'
+    '   "product": { "type":"...", "material":"...", "design":"...", "features":"..." },\n'
+    '   "background": { "ideal_color":"...", "texture":"...", "lighting":"...", "style":"..." },\n'
+    '   "layout": {\n'
+    '     "subject_layout": { "center":[cx,cy], "ratio":[rw,rh] },\n'
+    # ⬇️ 수정: font_style 필드 추가
+    '     "nongraphic_layout": [ {"type":"headline","bbox":[x,y,w,h],"confidence":c, "font_style": {"sentiment":"business|playful|cute|vintage|loud|futuristic|stiff|happy|childlike|excited", "weight":"bold|light|regular", "color":"#RRGGBB"}} ],\n'
+    '     "graphic_layout": [\n'
+    '       {"type":"logo","content":"","bbox":[x,y,w,h],"confidence":c}\n'
+    '     ]\n'
+    '   }\n'
     '}\n'
     '\n'
     '# 제약 사항:\n'
@@ -72,16 +73,16 @@ BG_SYSTEM = (
 BG_SCHEMA = (
     'Only output the following JSON. No explanations.\n'
     '{\n'
-    '  "background_prompt": "... (120-200 words, natural English, no bullets)",\n'
-    '  "negative_prompt": "... (things to avoid; artifacts, occlusions, off-palette colors)",\n'
-    '  "camera": { "angle":"eye-level|top-down|low-angle|macro|oblique", "distance":"closeup|medium|wide" },\n'
-    '  "lighting": { "type":"soft|hard|rim|ambient", "direction":"left|right|front|back|top|bottom" },\n'
-    '  "palette": ["#RRGGBB", "..."],\n'
-    '  "objects": [\n'
-    '    { "name":"flower petals", "style":"bokeh|flat|painterly|realistic", "bbox_hint":[x,y,w,h],\n'
-    '      "depth":"behind_product|same_plane", "avoid_iou_with":"subject,text_boxes,logo_boxes",\n'
-    '      "notes":"subject와 텍스트 박스 IoU<0.1; avoid overlaps" }\n'
-    '  ]\n'
+    '   "background_prompt": "... (120-200 words, natural English, no bullets)",\n'
+    '   "negative_prompt": "... (things to avoid; artifacts, occlusions, off-palette colors)",\n'
+    '   "camera": { "angle":"eye-level|top-down|low-angle|macro|oblique", "distance":"closeup|medium|wide" },\n'
+    '   "lighting": { "type":"soft|hard|rim|ambient", "direction":"left|right|front|back|top|bottom" },\n'
+    '   "palette": ["#RRGGBB", "..."],\n'
+    '   "objects": [\n'
+    '     { "name":"flower petals", "style":"bokeh|flat|painterly|realistic", "bbox_hint":[x,y,w,h],\n'
+    '       "depth":"behind_product|same_plane", "avoid_iou_with":"subject,text_boxes,logo_boxes",\n'
+    '       "notes":"subject와 텍스트 박스 IoU<0.1; avoid overlaps" }\n'
+    '   ]\n'
     '}\n'
 )
 
@@ -151,12 +152,13 @@ def enforce_text_rules(items, subject_bbox, min_ar=1.8, min_margin=0.03, max_iou
         out.append(it)
     return out
 
+# ⬇️ 수정: 선택된 텍스트 후보의 font_style을 정규화하고 유지하는 로직 추가
 def pick_single_text(texts, subject_bbox):
     if not texts:
         return []
     cx = subject_bbox[0] + subject_bbox[2]/2
     cy = subject_bbox[1] + subject_bbox[3]/2
-    top_free    = subject_bbox[1]
+    top_free      = subject_bbox[1]
     bottom_free = 1 - (subject_bbox[1] + subject_bbox[3])
     left_free   = subject_bbox[0]
     right_free  = 1 - (subject_bbox[0] + subject_bbox[2])
@@ -179,7 +181,27 @@ def pick_single_text(texts, subject_bbox):
         )
         align_bonus = 0.2 if align else 0.0
         return (t.get('confidence',0.5)) + align_bonus + 0.1*min(ar/3,1.0) + 0.05*area - 0.6*iou_pen
-    return [max(texts, key=score)]
+    
+    chosen = max(texts, key=score)
+
+    # 폰트 스타일 정규화 및 정리
+    font_style = chosen.get("font_style", {})
+    if isinstance(font_style, dict):
+        # 감성(sentiment) 정규화
+        font_style["sentiment"] = (font_style.get("sentiment") or "clean").lower()
+        # 굵기(weight) 정규화
+        font_style["weight"] = (font_style.get("weight") or "regular").lower()
+        # 색상(color) 정규화 (HEX 형식 검사)
+        color = font_style.get("color", "#000000").strip()
+        if not re.match(r'^#[0-9a-fA-F]{6}$', color):
+            color = "#000000" 
+        font_style["color"] = color
+        chosen["font_style"] = font_style
+    else:
+        # VLM이 폰트 스타일을 문자열 등으로 잘못 출력한 경우 대체
+        chosen["font_style"] = {"sentiment":"clean", "weight":"regular", "color":"#000000"}
+    
+    return [chosen]
 
 def pick_single_logo(graphics, subject_bbox, chosen_text):
     logos = [g for g in graphics if g.get("type") == "logo"]
@@ -211,7 +233,7 @@ def postprocess_layout(parsed, text_iou_thr=0.3, logo_iou_thr=0.3, subj_text_iou
     texts = [{**t, "confidence": float(t.get("confidence", 0.5))} for t in texts]
     texts = enforce_text_rules(texts, subject_bbox, max_iou=subj_text_iou_max)
     texts = nms(texts, iou_thr=text_iou_thr)
-    texts = pick_single_text(texts, subject_bbox)
+    texts = pick_single_text(texts, subject_bbox) # 폰트 정규화 로직 포함
     for i, t in enumerate(texts):
         t.setdefault("id", f"text#{i}")
     graphics = layout.get("graphic_layout", [])
@@ -290,6 +312,7 @@ def normalize_if_pixels_layout(parsed, image_path):
 # Fallbacks: inject default text banners & logo
 # -------------------------------------------------
 
+# ⬇️ 수정: 폴백 텍스트 박스에 기본 폰트 스타일 추가
 def inject_fallback_boxes(parsed, headline_h=0.12, margin=0.04, logo_box=(0.25, 0.10)):
     if "layout" not in parsed or not isinstance(parsed["layout"], dict):
         parsed["layout"] = {}
@@ -304,15 +327,19 @@ def inject_fallback_boxes(parsed, headline_h=0.12, margin=0.04, logo_box=(0.25, 
         top = [margin, margin, 1 - 2 * margin, headline_h]
         bot = [margin, 1 - margin - headline_h, 1 - 2 * margin, headline_h]
 
-        top_free    = subj[1]
+        top_free      = subj[1]
         bottom_free = 1 - (subj[1] + subj[3])
         pick = top if top_free >= bottom_free else bot
 
         if iou(pick, subj) >= 0.1:
             x, y, w, h = pick
             pick = [x, y, w, max(0.05, h * 0.5)]
+        
+        # 폰트 스타일 기본값 추가
         layout["nongraphic_layout"] = [
-            {"type": "headline", "bbox": clip_bbox(pick), "confidence": 0.5}
+            {"type": "headline", "bbox": clip_bbox(pick), "confidence": 0.5,
+             "font_style": {"sentiment":"clean", "weight":"regular", "color":"#000000"}
+            }
         ]
 
     gg = layout.get("graphic_layout")
@@ -462,7 +489,7 @@ def extract_bg_fields_from_text(gen_text: str):
 
 def ensure_background_prompts(parsed, product_name, context_json, min_chars=800):
     """Ensure long natural-English prompt & safe negative; normalize camera/lighting.
-       Accepts string/dict light/camera; extracts fields if prompt contains JSON string.
+        Accepts string/dict light/camera; extracts fields if prompt contains JSON string.
     """
     bg = parsed.setdefault("background", {})
     prompt_raw = (bg.get("prompt") or '').strip()
@@ -718,8 +745,6 @@ def main():
     else:
     # 그래도 stdout로는 찍어둠
         print(json.dumps(parsed, ensure_ascii=False, indent=2))
-
-
 
 
 if __name__ == "__main__":
