@@ -1,0 +1,100 @@
+{
+  "product": {
+    "type": "메모링",
+    "material": "실버",
+    "design": "인체 패턴",
+    "features": [
+      "손목용"
+    ]
+  },
+  "background": {
+    "ideal_color": "부드러운 색상",
+    "texture": "소프트한 무늬",
+    "lighting": {
+      "type": "soft",
+      "direction": "front"
+    },
+    "style": "따뜻하고 친근한 분위기",
+    "prompt": "A minimal studio scene viewed eye-level at a closeup distance, built on a clean white base with a uniform, smooth surface. The background feels airy and uncluttered so the jewelry remains the visual anchor. Lighting is soft from the front, creating gentle highlights on metal and controlled shadows that avoid the subject. Subtle gradients and a clean vignette guide the eye toward the center without stealing attention. Props are placed behind the product and outside text/logo areas; their scale is modest and their edges soft to prevent occlusion. Depth cues are introduced with a mild blur in the far plane and a crisp focus on the subject plane. Micro-texture is barely perceptible, keeping reflections smooth and elegant. Overall mood is calm, premium, and editorial. The color harmony follows #9b7863, #a48773, #8c674d, #ab9d8f, #c2bbb3. The composition preserves ample top has ample negative space, bottom has ample negative space, left side has ample negative space, right side has ample negative space for copy layers. The scene flatters the 메모링.",
+    "negative_prompt": "artifacts, overexposed areas, underexposed areas, overly vibrant colors, blurriness, wrong focal length, out-of-focus, incorrect camera angle, wrong lighting, wrong surface material, wrong object style, wrong composition, wrong depth placement, wrong scale, wrong color palette, wrong texture, wrong mood, wrong materials",
+    "camera": {
+      "angle": "eye-level",
+      "distance": "closeup"
+    },
+    "palette": [
+      "#9b7863",
+      "#a48773",
+      "#8c674d",
+      "#ab9d8f",
+      "#c2bbb3"
+    ]
+  },
+  "layout": {
+    "subject_layout": {
+      "center": [
+        0.5,
+        0.5
+      ],
+      "ratio": [
+        0.3,
+        0.3
+      ]
+    },
+    "nongraphic_layout": [
+      {
+        "type": "headline",
+        "bbox": [
+          0.04,
+          0.84,
+          0.92,
+          0.12
+        ],
+        "confidence": 0.5
+      }
+    ],
+    "graphic_layout": [
+      {
+        "type": "logo",
+        "content": "",
+        "bbox": [
+          0.35,
+          0.45,
+          0.65,
+          0.55
+        ],
+        "confidence": 0.8
+      },
+      {
+        "type": "underlay",
+        "for": "headline#0",
+        "bbox": [
+          0.025,
+          0.825,
+          0.9500000000000001,
+          0.15
+        ],
+        "style": {
+          "shape": "rounded",
+          "radius": 0.08,
+          "opacity": 0.6
+        },
+        "confidence": 0.6
+      }
+    ]
+  },
+  "background_objects": [
+    {
+      "name": "flower petals",
+      "style": "bokeh",
+      "bbox_hint": [
+        0.35,
+        0.35,
+        0.3,
+        0.3
+      ],
+      "depth": "behind_product",
+      "avoid_iou_with": "subject,text_boxes,logo_boxes",
+      "notes": "subject와 텍스트 박스 IoU<0.1; avoid overlaps"
+    }
+  ]
+} 
