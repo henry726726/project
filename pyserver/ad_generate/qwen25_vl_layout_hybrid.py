@@ -133,25 +133,52 @@ def nms(boxes, iou_thr=0.3):
     return kept
 
 
+# ... (앞부분 생략) ...
+
 def enforce_text_rules(items, subject_bbox, min_ar=1.8, min_margin=0.03, max_iou=0.2):
     out = []
-    for it in items:
+    
+    print(f"[DEBUG] Enforcing text rules (AR>={min_ar}, IoU<{max_iou})...", file=sys.stderr)
+    
+    for idx, it in enumerate(items): # idx 추가
         b = it.get("bbox", [0, 0, 0, 0])
+        
+        # 1. 유효성 검사 (기본)
         if not (isinstance(b, list) and len(b) == 4):
             continue
         b = clip_bbox(b)
-        if subject_bbox and iou(b, subject_bbox) >= max_iou:
-            continue
         x, y, w, h = b
-        if x < min_margin or y < min_margin or x + w > 1 - min_margin or y + h > 1 - min_margin:
+        
+        # 2. IoU 계산 및 검사
+        current_iou = iou(b, subject_bbox) if subject_bbox else 0.0
+        if subject_bbox and current_iou >= max_iou:
+            # 🌟 IoU 실패 시 디버그 출력 추가 🌟
+            print(f"[DEBUG] Text #{idx}: FAIL (IoU={current_iou:.3f} >= {max_iou})", file=sys.stderr)
             continue
+            
+        # 3. Margin 검사
+        if x < min_margin or y < min_margin or x + w > 1 - min_margin or y + h > 1 - min_margin:
+            # 🌟 Margin 실패 시 디버그 출력 추가 🌟
+            print(f"[DEBUG] Text #{idx}: FAIL (Margin)", file=sys.stderr)
+            continue
+            
+        # 4. AR (Aspect Ratio) 계산 및 검사
         ar = (w / h) if h > 0 else 999
         if ar < min_ar:
+            # 🌟 AR 실패 시 디버그 출력 추가 🌟
+            print(f"[DEBUG] Text #{idx}: FAIL (AR={ar:.3f} < {min_ar})", file=sys.stderr)
             continue
+            
+        # 🌟 통과 시 디버그 출력 추가 🌟
+        print(f"[DEBUG] Text #{idx}: PASS (IoU={current_iou:.3f}, AR={ar:.3f})", file=sys.stderr)
+        
         it["confidence"] = float(it.get("confidence", 0.5))
         it["bbox"] = b
         out.append(it)
+        
     return out
+
+# ... (나머지 코드 생략) ...
 
 # ⬇️ 수정: 선택된 텍스트 후보의 font_style을 정규화하고 유지하는 로직 추가
 def pick_single_text(texts, subject_bbox):
