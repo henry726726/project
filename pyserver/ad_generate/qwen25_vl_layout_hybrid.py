@@ -13,13 +13,22 @@ torch.backends.cuda.matmul.allow_tf32 = True  # 성능 미세향상
 
 model_id = os.getenv("QWEN_VL_MODEL", "Qwen/Qwen2.5-VL-3B-Instruct")
 
+#cuda 적용 어렵고 gpu할당 문제로 cpu 사용 
+model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+    model_id,
+    torch_dtype=torch.float16,
+    device_map="auto",
+    low_cpu_mem_usage=True,
+)
+
+'''
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     model_id,
     dtype=DTYPE,  # ✅ 올바른 파라미터
     device_map="auto",  # ✅ VRAM에 맞춰 자동 배치
     attn_implementation="sdpa",  # ✅ Windows/PyTorch에서 안정/빠름
 ).eval()
-
+'''
 processor = AutoProcessor.from_pretrained(model_id, use_fast=False)
 
 print(f"[QwenVL] model={model_id} cuda={torch.cuda.is_available()} "
@@ -705,6 +714,17 @@ def main():
     parsed = extract_json(gen_text)
     parsed = normalize_if_pixels_layout(parsed, image_path)
     parsed = postprocess_layout(parsed)
+
+    # 🌟🌟🌟 요청하신 한 줄 추가 🌟🌟🌟
+    # 텍스트 폴백 여부를 확인하고 출력하는 코드
+    ng_layout = parsed.get('layout', {}).get('nongraphic_layout')
+    gg_layout = parsed.get('layout', {}).get('graphic_layout')
+    is_text_fb = not isinstance(ng_layout, list) or len(ng_layout) == 0
+    is_logo_fb = not isinstance(gg_layout, list) or len([g for g in gg_layout if g.get("type") == "logo"]) == 0
+    
+    print(f"[FALLBACK] Text: {'Active' if is_text_fb else 'Skip'} / Logo: {'Active' if is_logo_fb else 'Skip'}", file=sys.stderr)
+    # 🌟🌟🌟 🌟🌟🌟 🌟🌟🌟
+
     parsed = inject_fallback_boxes(parsed)
     parsed = add_text_underlays(parsed)
 
