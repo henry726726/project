@@ -16,19 +16,11 @@ model_id = os.getenv("QWEN_VL_MODEL", "Qwen/Qwen2.5-VL-3B-Instruct")
 #cuda 적용 어렵고 gpu할당 문제로 cpu 사용 
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     model_id,
-    torch_dtype=torch.float16,
-    device_map="auto",
+    torch_dtype=torch.float32,  # ✅ CPU에서는 float32가 안정적
+    device_map="cpu",           # ✅ device_map="auto" 대신 "cpu" 명시
     low_cpu_mem_usage=True,
 )
 
-'''
-model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    model_id,
-    dtype=DTYPE,  # ✅ 올바른 파라미터
-    device_map="auto",  # ✅ VRAM에 맞춰 자동 배치
-    attn_implementation="sdpa",  # ✅ Windows/PyTorch에서 안정/빠름
-).eval()
-'''
 processor = AutoProcessor.from_pretrained(model_id, use_fast=False)
 
 print(f"[QwenVL] model={model_id} cuda={torch.cuda.is_available()} "
@@ -195,20 +187,38 @@ def pick_single_text(texts, subject_bbox):
 
     # 폰트 스타일 정규화 및 정리
     font_style = chosen.get("font_style", {})
+    is_font_style_fallback = False
+    
     if isinstance(font_style, dict):
         # 감성(sentiment) 정규화
-        font_style["sentiment"] = (font_style.get("sentiment") or "clean").lower()
+        if not font_style.get("sentiment") or font_style.get("sentiment").lower() not in ["business", "playful", "cute", "vintage", "loud", "futuristic", "stiff", "happy", "childlike", "excited", "clean"]: # clean은 추가 허용
+            font_style["sentiment"] = "clean"
+            is_font_style_fallback = True
+        else:
+            font_style["sentiment"] = font_style["sentiment"].lower()
+            
         # 굵기(weight) 정규화
-        font_style["weight"] = (font_style.get("weight") or "regular").lower()
+        if not font_style.get("weight") or font_style.get("weight").lower() not in ["bold", "light", "regular"]:
+            font_style["weight"] = "regular"
+            is_font_style_fallback = True
+        else:
+            font_style["weight"] = font_style["weight"].lower()
+            
         # 색상(color) 정규화 (HEX 형식 검사)
         color = font_style.get("color", "#000000").strip()
         if not re.match(r'^#[0-9a-fA-F]{6}$', color):
-            color = "#000000" 
+            color = "#000000"
+            is_font_style_fallback = True
         font_style["color"] = color
+        
         chosen["font_style"] = font_style
     else:
         # VLM이 폰트 스타일을 문자열 등으로 잘못 출력한 경우 대체
         chosen["font_style"] = {"sentiment":"clean", "weight":"regular", "color":"#000000"}
+        is_font_style_fallback = True # VLM 출력 자체가 딕셔너리가 아니거나 잘못된 경우
+        
+    if is_font_style_fallback:
+        print("[FALLBACK] Font Style: VLM이 유효하지 않은 폰트 스타일을 제안하여 기본값으로 대체됨.", file=sys.stderr)
     
     return [chosen]
 
@@ -269,7 +279,7 @@ def postprocess_layout(parsed, text_iou_thr=0.3, logo_iou_thr=0.3, subj_text_iou
 # -------------------------------------------------
 # Normalization: pixel -> 0~1
 # -------------------------------------------------
-
+# ... (normalize_if_pixels_layout 함수 생략 - 내용 변경 없음) ...
 def normalize_if_pixels_layout(parsed, image_path):
     try:
         W, H = Image.open(image_path).size
@@ -321,16 +331,20 @@ def normalize_if_pixels_layout(parsed, image_path):
 # Fallbacks: inject default text banners & logo
 # -------------------------------------------------
 
-# ⬇️ 수정: 폴백 텍스트 박스에 기본 폰트 스타일 추가
+# ⬇️ 수정: 폴백 텍스트 박스에 기본 폰트 스타일 추가 및 폴백 적용 여부 기록
 def inject_fallback_boxes(parsed, headline_h=0.12, margin=0.04, logo_box=(0.25, 0.10)):
     if "layout" not in parsed or not isinstance(parsed["layout"], dict):
         parsed["layout"] = {}
     layout = parsed["layout"]
+    
+    # 폴백 상태를 기록할 딕셔너리 초기화
+    fallback_applied = {"text": False, "logo": False} 
 
     s = layout.get("subject_layout", {"center": [0.5, 0.5], "ratio": [0.3, 0.3]})
     cx, cy = s.get("center", [0.5, 0.5]); rw, rh = s.get("ratio", [0.3, 0.3])
     subj = clip_bbox([cx - rw / 2, cy - rh / 2, rw, rh])
 
+    # 1. 텍스트 폴백 적용 로직
     ng = layout.get("nongraphic_layout")
     if not isinstance(ng, list) or len(ng) == 0:
         top = [margin, margin, 1 - 2 * margin, headline_h]
@@ -344,29 +358,41 @@ def inject_fallback_boxes(parsed, headline_h=0.12, margin=0.04, logo_box=(0.25, 
             x, y, w, h = pick
             pick = [x, y, w, max(0.05, h * 0.5)]
         
-        # 폰트 스타일 기본값 추가
+        # 텍스트 폴백 적용됨
         layout["nongraphic_layout"] = [
             {"type": "headline", "bbox": clip_bbox(pick), "confidence": 0.5,
              "font_style": {"sentiment":"clean", "weight":"regular", "color":"#000000"}
             }
         ]
+        fallback_applied["text"] = True # 👈 폴백 적용 상태 기록
 
+    # 2. 로고 폴백 적용 로직
     gg = layout.get("graphic_layout")
-    if not isinstance(gg, list) or len(gg) == 0:
+    # gg가 리스트가 아니거나, 비어 있거나, 'logo' 타입이 하나도 없으면 폴백
+    if not isinstance(gg, list) or len(gg) == 0 or not any(g.get("type") == "logo" for g in gg):
         lw, lh = logo_box
         gx = 1 - margin - lw; gy = margin
         logo = clip_bbox([gx, gy, lw, lh])
         if iou(logo, subj) >= 0.3:
             logo = clip_bbox([margin, margin, lw, lh])
-        layout["graphic_layout"] = [
+        
+        # 로고 폴백 적용됨
+        if not isinstance(layout.get("graphic_layout"), list):
+            layout["graphic_layout"] = [] # 리스트가 아니었다면 초기화
+            
+        layout["graphic_layout"].append(
             {"type": "logo", "content": "", "bbox": logo, "confidence": 0.5}
-        ]
+        )
+        fallback_applied["logo"] = True # 👈 폴백 적용 상태 기록
+
+    # 최종 폴백 상태를 parsed 딕셔너리에 추가하여 main 함수로 전달
+    parsed["_fallback_status"] = fallback_applied
+    
     return parsed
 
 # -------------------------------------------------
 # Text underlays for readability
-# -------------------------------------------------
-
+# ... (add_text_underlays 함수 생략 - 내용 변경 없음) ...
 def add_text_underlays(parsed, pad=0.015, opacity=0.6, radius=0.08):
     if not isinstance(parsed, dict) or "layout" not in parsed:
         return parsed
@@ -395,8 +421,7 @@ def add_text_underlays(parsed, pad=0.015, opacity=0.6, radius=0.08):
 
 # -------------------------------------------------
 # Palette extraction (PIL adaptive)
-# -------------------------------------------------
-
+# ... (extract_palette_hex 함수 생략 - 내용 변경 없음) ...
 def extract_palette_hex(image_path, k=5):
     try:
         im = Image.open(image_path).convert("RGB")
@@ -417,8 +442,7 @@ def extract_palette_hex(image_path, k=5):
 
 # -------------------------------------------------
 # Layout summary for background context
-# -------------------------------------------------
-
+# ... (summarize_layout_for_bg 함수 생략 - 내용 변경 없음) ...
 def summarize_layout_for_bg(parsed):
     if not isinstance(parsed, dict) or "layout" not in parsed:
         return "no layout"
@@ -450,8 +474,7 @@ def summarize_layout_for_bg(parsed):
 
 # -------------------------------------------------
 # Background prompt helpers: defaults and robust extraction
-# -------------------------------------------------
-
+# ... (extract_bg_fields_from_text, ensure_background_prompts 등 생략 - 내용 변경 없음) ...
 def _build_negative_prompt_default():
     return (
         "busy patterns, harsh shadows, specular clipping on metal, occluding props, "
@@ -584,10 +607,10 @@ def ensure_background_prompts(parsed, product_name, context_json, min_chars=800)
     parsed["background"] = bg
     return parsed
 
+
 # -------------------------------------------------
 # Second-pass call to VLM for background planning
-# -------------------------------------------------
-
+# ... (generate_bg_plan 함수 생략 - 내용 변경 없음) ...
 def generate_bg_plan(model, processor, image_path, product_name, parsed, palette,
                      max_new_tokens=512, top_p=0.9, temperature=0.7):
     context = summarize_layout_for_bg(parsed)
@@ -713,19 +736,29 @@ def main():
     # First-pass: parse & refine
     parsed = extract_json(gen_text)
     parsed = normalize_if_pixels_layout(parsed, image_path)
-    parsed = postprocess_layout(parsed)
+    
+    # 🌟 VLM 결과 후처리 (폰트 스타일 폴백 경고는 이 함수 내에서 출력됨)
+    parsed = postprocess_layout(parsed) 
 
-    # 🌟🌟🌟 요청하신 한 줄 추가 🌟🌟🌟
-    # 텍스트 폴백 여부를 확인하고 출력하는 코드
+    # 텍스트/로고 폴백 필요 상태 확인 및 출력
     ng_layout = parsed.get('layout', {}).get('nongraphic_layout')
     gg_layout = parsed.get('layout', {}).get('graphic_layout')
-    is_text_fb = not isinstance(ng_layout, list) or len(ng_layout) == 0
-    is_logo_fb = not isinstance(gg_layout, list) or len([g for g in gg_layout if g.get("type") == "logo"]) == 0
+    # nongraphic_layout이 비어있으면 텍스트 폴백이 필요함
+    is_text_fb_pre = not isinstance(ng_layout, list) or len(ng_layout) == 0
+    # graphic_layout에서 'logo' 타입이 없으면 로고 폴백이 필요함
+    is_logo_fb_pre = not isinstance(gg_layout, list) or len([g for g in gg_layout if g.get("type") == "logo"]) == 0
     
-    print(f"[FALLBACK] Text: {'Active' if is_text_fb else 'Skip'} / Logo: {'Active' if is_logo_fb else 'Skip'}", file=sys.stderr)
-    # 🌟🌟🌟 🌟🌟🌟 🌟🌟🌟
-
+    # [PRE-FALLBACK] 출력: VLM 결과가 규칙을 통과했는지 여부
+    print(f"[PRE-FALLBACK] Text: {'Active' if is_text_fb_pre else 'Skip'} / Logo: {'Active' if is_logo_fb_pre else 'Skip'}", file=sys.stderr)
+    
+    # 🌟 폴백 실행 및 적용 여부 기록 🌟
     parsed = inject_fallback_boxes(parsed)
+    # inject_fallback_boxes가 기록한 실제 적용 상태를 꺼냄
+    fb_status = parsed.pop("_fallback_status", {"text": False, "logo": False}) 
+    
+    # [APPLIED] 출력: inject_fallback_boxes 함수가 실제로 박스를 삽입했는지 여부
+    print(f"[APPLIED] Fallback Text: {fb_status['text']} / Fallback Logo: {fb_status['logo']}", file=sys.stderr)
+    
     parsed = add_text_underlays(parsed)
 
     # Second-pass: background prompt & objects
