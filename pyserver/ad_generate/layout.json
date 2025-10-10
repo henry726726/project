@@ -1,23 +1,23 @@
 {
   "product": {
-    "type": "necklace",
-    "material": "silver",
-    "design": "flower",
-    "features": "studs"
+    "type": "Premium Necklace",
+    "material": "Silver",
+    "design": "Flower Petal with Gemstones",
+    "features": "Handcrafted, Elegant, Romantic"
   },
   "background": {
-    "ideal_color": "white",
-    "texture": "smooth",
+    "ideal_color": "White",
+    "texture": "Smooth",
     "lighting": {
       "type": "soft",
-      "direction": "left"
+      "direction": "above"
     },
-    "style": "minimalistic",
-    "prompt": "A minimal studio scene viewed eye-level|top-down at a closeup distance, built on a clean white base with a uniform, smooth surface. The background feels airy and uncluttered so the jewelry remains the visual anchor. Lighting is soft from the left, creating gentle highlights on metal and controlled shadows that avoid the subject. Subtle gradients and a clean vignette guide the eye toward the center without stealing attention. Props are placed behind the product and outside text/logo areas; their scale is modest and their edges soft to prevent occlusion. Depth cues are introduced with a mild blur in the far plane and a crisp focus on the subject plane. Micro-texture is barely perceptible, keeping reflections smooth and elegant. Overall mood is calm, premium, and editorial. The color harmony follows #868685, #919190, #8f8f8d, #706c6a, #959493. The composition preserves ample bottom has ample negative space, right side has ample negative space for copy layers. The scene flatters the 실버 꽃모양 목걸이.",
-    "negative_prompt": "Any signs of overexposure or underexposure, any objects that obstruct the view of the jewelry, any elements that detract from the simplicity of the scene, any artifacts or artifacts, any instances of occlusion or overlap between objects.",
+    "style": "Minimalist",
+    "prompt": "A minimal studio scene viewed eye-level at a medium distance, built on a clean white base with a uniform, smooth surface. The background feels airy and uncluttered so the jewelry remains the visual anchor. Lighting is soft from the above, creating gentle highlights on metal and controlled shadows that avoid the subject. Subtle gradients and a clean vignette guide the eye toward the center without stealing attention. Props are placed behind the product and outside text/logo areas; their scale is modest and their edges soft to prevent occlusion. Depth cues are introduced with a mild blur in the far plane and a crisp focus on the subject plane. Micro-texture is barely perceptible, keeping reflections smooth and elegant. Overall mood is calm, premium, and editorial. The color harmony follows #868685, #919190, #8f8f8d, #706c6a, #959493. The composition preserves ample bottom has ample negative space, left side has ample negative space, right side has ample negative space for copy layers. The scene flatters the 프리미엄 목걸이, 로맨스를 선물하세요.",
+    "negative_prompt": "artifacts, occlusions, off-palette colors, overly complex backgrounds, unrealistic lighting conditions",
     "camera": {
-      "angle": "eye-level|top-down",
-      "distance": "closeup"
+      "angle": "eye-level",
+      "distance": "medium"
     },
     "palette": [
       "#868685",
@@ -34,8 +34,8 @@
         0.37
       ],
       "ratio": [
-        0.55,
-        0.55
+        0.35,
+        0.35
       ]
     },
     "nongraphic_layout": [
