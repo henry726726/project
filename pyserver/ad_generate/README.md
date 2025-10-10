@@ -1,8 +1,8 @@
 #text rendering 수정방안
 
 google fonts (구글 폰트에서 지정한 feeling 그대로 연결 지어 사용)
-business 나눔 고딕 
 
+python ad_text_render_v4.py --image "C:\Users\qkddl\Documents\GitHub\project\pyserver\ad_generate\stage4_output.png" --layout_json "C:\Users\qkddl\Documents\GitHub\project\pyserver\ad_generate\final_out.json" --copy_json copy.json --out final_ad_output.png --skip_layout_underlays
 
 
 1.  ad_text_render.py에 폰트 및 색상 매칭 정보 추가 버전
