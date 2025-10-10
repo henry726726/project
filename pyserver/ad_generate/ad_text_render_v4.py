@@ -443,7 +443,11 @@ def main():
     override_text_color = None
     override_stroke_color = None
     # NOTE: FONT_DIR 설정은 기존 코드와 동일하게 유지
-    FONT_DIR = r"C:\Users\qkddl\Documents\GitHub\project\pyserver\ad_generate\fonts" 
+    FONT_DIR = r"fonts"
+    '''
+    상대 경로 지정을 위해 변경, 실행 경로가 꼭 pyserver/ad_generate여야함
+    FONT_DIR = r"pyserver\ad_generate\fonts"
+    '''
 
     try:
         # 변경된 함수 사용
