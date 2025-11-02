@@ -132,7 +132,7 @@ async def compose(
     product_name: str = Form(""),
     headline: str = Form(""),
     logo_path: str = Form(""),
-    font_kor: str = Form(r"C:\Windows\Fonts\malgunbd.ttf"),
+    #font_kor: str = Form(r"C:\Windows\Fonts\malgunbd.ttf"),
 ):
     # 0) 입력 유효성
     resolved_file = image or image_file
@@ -212,7 +212,7 @@ async def compose(
             "--image", stage3_path,
             "--layout_json", layout_json,
             "--copy_json", copy_json,
-            "--font_kor", font_kor,
+            #"--font_kor", font_kor,
             "--out", final_path,
             "--skip_layout_underlays"
         ]
@@ -249,7 +249,7 @@ async def compose(
                 "product": resolved_product,
                 "headline": resolved_headline,
                 "logo_path": logo_path.strip() if logo_path else "",
-                "font_kor": font_kor,
+                #"font_kor": font_kor,
             }
         }
 
@@ -280,7 +280,7 @@ async def generate(
         product_name="",
         headline="",
         logo_path="",
-        font_kor=r"C:\Windows\Fonts\malgunbd.ttf",
+        #font_kor=r"C:\Windows\Fonts\malgunbd.ttf",
     )
 
 # ----------------------------
