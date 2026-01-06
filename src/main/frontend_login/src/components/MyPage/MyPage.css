@@ -1,0 +1,248 @@
+.mypage-container {
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  margin-top: 50px;
+  margin-bottom: 50px;
+  width: 720px;
+  background: linear-gradient(135deg, #1e162f 0%, #392657 100%);
+  padding: 50px;
+  border-radius: 24px;
+  box-shadow: 0 25px 60px rgba(56, 40, 92, 0.85);
+  color: #d1cff6;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.mypage-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 35px;
+}
+
+.mypage-title {
+  color: #b4acf8;
+  font-size: 52px;
+  font-weight: 800;
+  text-shadow: 0 0 30px rgba(140, 122, 249, 0.9);
+  letter-spacing: 0.05em;
+}
+
+.mypage-underline {
+  width: 90px;
+  height: 8px;
+  background: linear-gradient(90deg, #7cc3ba, #58855d);
+  border-radius: 16px;
+  box-shadow: 0 0 18px rgba(124, 195, 186, 0.8);
+}
+
+.mypage-header > div[style] {
+  margin-top: 15px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #7cc3ba;
+  text-shadow: 0 0 8px rgba(124, 195, 186, 0.75);
+}
+
+.error-message {
+  margin-top: 25px;
+  background-color: rgba(255, 80, 80, 0.15);
+  padding: 15px;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 15px;
+  color: #ff6b6b;
+  box-shadow: 0 0 14px rgba(255, 80, 80, 0.55);
+}
+
+.profile-section {
+  display: flex;
+  gap: 48px;
+  margin-bottom: 50px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-avatar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 160px;
+  height: 160px;
+  background: rgba(124, 195, 186, 0.1);
+  border-radius: 50%;
+  box-shadow: 0 8px 26px rgba(124, 195, 186, 0.4);
+  border: 5px solid #7cc3ba;
+}
+
+.profile-avatar img {
+  width: 90px;
+  height: 90px;
+  filter: brightness(0.8) sepia(0.3) hue-rotate(120deg);
+  user-select: none;
+}
+
+.profile-info {
+  flex: 1;
+  min-width: 320px;
+  background: rgba(124, 195, 186, 0.12);
+  border-radius: 20px;
+  padding: 35px;
+  box-shadow: 0 12px 26px rgba(124, 195, 186, 0.3);
+  color: #d4d1f2;
+}
+
+.info-display .info-item,
+.info-display .bio-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 18px;
+  font-size: 21px;
+  font-weight: 600;
+  color: #b0adc5;
+}
+
+.info-display .label {
+  min-width: 130px;
+  color: #79bfc2;
+}
+
+.info-display .value {
+  color: #a3d0c4;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.info-display img {
+  width: 24px;
+  filter: brightness(0.85) sepia(0.5) hue-rotate(110deg);
+}
+
+.bio-item {
+  flex-direction: column;
+  align-items: flex-start !important;
+  gap: 12px;
+  line-height: 1.7;
+  padding-left: 40px;
+  font-style: italic;
+}
+
+.info-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.info-edit .edit-item {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+.info-edit input,
+.info-edit textarea {
+  flex: 1;
+  height: 45px;
+  padding: 14px 20px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 2px solid #79bfc2;
+  border-radius: 14px;
+  color: #aadcde;
+  font-size: 18px;
+  font-weight: 500;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.75);
+  resize: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.info-edit textarea {
+  height: 90px;
+  padding: 16px 20px;
+}
+
+.info-edit input::placeholder,
+.info-edit textarea::placeholder {
+  color: #7cc3ba;
+}
+
+.info-edit input:focus,
+.info-edit textarea:focus {
+  border-color: #a1eade;
+  box-shadow: 0 0 14px #a1eade;
+  outline: none;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.button-group {
+  display: flex;
+  gap: 40px;
+}
+
+.action-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 160px;
+  height: 54px;
+  border-radius: 27px;
+  font-weight: 700;
+  font-size: 18px;
+  color: #cecee6;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 8px 30px rgba(121, 191, 194, 0.85);
+  background: linear-gradient(45deg, #7cc3ba, #53846e);
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: linear-gradient(45deg, #53846e, #7cc3ba);
+  box-shadow: 0 12px 38px rgba(83, 132, 110, 0.95);
+  transform: translateY(-4px);
+}
+
+.edit-btn {
+  /* 기본 action-btn 스타일 */
+}
+
+.save-btn {
+  /* 기본 action-btn 스타일 */
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: linear-gradient(45deg, #bb5f67, #db727b);
+  box-shadow: 0 8px 30px rgba(219, 114, 123, 0.85);
+}
+
+.cancel-btn:hover {
+  background: linear-gradient(45deg, #db727b, #bb5f67);
+  box-shadow: 0 12px 38px rgba(219, 114, 123, 0.95);
+  transform: translateY(-4px);
+}
+
+.logout-btn {
+  background: linear-gradient(45deg, #ef8f93, #ffbcbc);
+  box-shadow: 0 8px 30px rgba(255, 180, 180, 0.85);
+  color: #670008;
+}
+
+.logout-btn:hover {
+  background: linear-gradient(45deg, #ffbcbc, #ef8f93);
+  box-shadow: 0 12px 38px rgba(255, 180, 180, 0.95);
+  transform: translateY(-4px);
+}

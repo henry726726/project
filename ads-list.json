@@ -1,0 +1,15 @@
+﻿{
+    "data":  [
+                 {
+                     "id":  "120224865361120172",
+                     "name":  "New Ad",
+                     "status":  "PAUSED"
+                 }
+             ],
+    "paging":  {
+                   "cursors":  {
+                                   "before":  "QVFIUk1iQzUyQzNNVmNsMzZAvWjNLa0lYMDZA6SkRMR29sbVRpTVIxRnVBUDN1RksxTnliSlFIUWFncFJyV2dxWUxVVmI5V2N4WUNzLUxzM1RzVFZAqaHFvdlpn",
+                                   "after":  "QVFIUk1iQzUyQzNNVmNsMzZAvWjNLa0lYMDZA6SkRMR29sbVRpTVIxRnVBUDN1RksxTnliSlFIUWFncFJyV2dxWUxVVmI5V2N4WUNzLUxzM1RzVFZAqaHFvdlpn"
+                               }
+               }
+}
